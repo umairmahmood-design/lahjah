@@ -6,7 +6,6 @@ import {
   collection,
   query,
   where,
-  orderBy,
   onSnapshot,
   Timestamp,
 } from "firebase/firestore";
@@ -36,6 +35,7 @@ const STATUS_CONFIG: Record<
 export default function DashboardPage() {
   const [requests, setRequests] = useState<CopyRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [uid, setUid] = useState<string | null>(null);
 
   useEffect(() => {
@@ -48,20 +48,33 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!uid) return;
 
+    // No orderBy here — avoids needing a composite Firestore index.
+    // We sort client-side after fetching instead.
     const q = query(
       collection(db, "copyRequests"),
-      where("createdBy", "==", uid),
-      orderBy("createdAt", "desc")
+      where("createdBy", "==", uid)
     );
 
-    const unsub = onSnapshot(q, (snap) => {
-      const docs = snap.docs.map((d) => ({
-        id: d.id,
-        ...(d.data() as Omit<CopyRequest, "id">),
-      }));
-      setRequests(docs);
-      setLoading(false);
-    });
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const docs = snap.docs
+          .map((d) => ({ id: d.id, ...(d.data() as Omit<CopyRequest, "id">) }))
+          // Sort newest-first client-side
+          .sort((a, b) => {
+            const aMs = a.createdAt?.toMillis() ?? 0;
+            const bMs = b.createdAt?.toMillis() ?? 0;
+            return bMs - aMs;
+          });
+        setRequests(docs);
+        setLoading(false);
+      },
+      (err) => {
+        console.error("[dashboard] Firestore error:", err);
+        setLoadError("Could not load requests. Please refresh the page.");
+        setLoading(false);
+      }
+    );
 
     return unsub;
   }, [uid]);
@@ -98,6 +111,16 @@ export default function DashboardPage() {
         {loading ? (
           <div className="flex items-center justify-center py-24">
             <div className="w-7 h-7 border-[3px] border-brand border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : loadError ? (
+          <div className="text-center py-20 bg-white rounded-2xl border border-red-100">
+            <p className="text-sm text-red-500 font-medium">{loadError}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 text-xs text-gray-400 hover:text-gray-600 underline"
+            >
+              Refresh
+            </button>
           </div>
         ) : requests.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-gray-200">
