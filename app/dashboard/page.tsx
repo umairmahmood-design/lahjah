@@ -17,17 +17,20 @@ import DashboardNav from "@/components/DashboardNav";
 interface CopyRequest {
   id: string;
   title: string;
-  status: "pending" | "generated" | "approved" | "rejected";
+  status: "draft" | "submitted" | "approved" | "rejected";
   createdAt: Timestamp;
-  copyEn?: string;
-  copyAr?: string;
+  tone?: string;
+  screenshotURLs?: string[];
 }
 
-const STATUS_COLORS: Record<CopyRequest["status"], string> = {
-  pending: "bg-yellow-100 text-yellow-700",
-  generated: "bg-blue-100 text-brand",
-  approved: "bg-green-100 text-green-700",
-  rejected: "bg-red-100 text-red-600",
+const STATUS_CONFIG: Record<
+  CopyRequest["status"],
+  { label: string; classes: string }
+> = {
+  draft: { label: "Draft", classes: "bg-gray-100 text-gray-500" },
+  submitted: { label: "Submitted", classes: "bg-blue-50 text-brand" },
+  approved: { label: "Approved", classes: "bg-green-100 text-green-700" },
+  rejected: { label: "Changes requested", classes: "bg-red-50 text-red-600" },
 };
 
 export default function DashboardPage() {
@@ -47,7 +50,7 @@ export default function DashboardPage() {
 
     const q = query(
       collection(db, "copyRequests"),
-      where("uid", "==", uid),
+      where("createdBy", "==", uid),
       orderBy("createdAt", "desc")
     );
 
@@ -63,40 +66,46 @@ export default function DashboardPage() {
     return unsub;
   }, [uid]);
 
+  const drafts = requests.filter((r) => r.status === "draft").length;
+  const submitted = requests.filter((r) => r.status === "submitted").length;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <DashboardNav />
 
-      <main className="max-w-5xl mx-auto px-8 py-10">
+      <main className="max-w-5xl mx-auto px-6 sm:px-8 py-10">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-start justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Copy Requests</h1>
-            <p className="text-sm text-gray-500 mt-1">
-              {requests.length} request{requests.length !== 1 ? "s" : ""}
-            </p>
+            {!loading && requests.length > 0 && (
+              <p className="text-sm text-gray-400 mt-1">
+                {requests.length} total · {submitted} submitted · {drafts} draft
+                {drafts !== 1 ? "s" : ""}
+              </p>
+            )}
           </div>
           <Link
             href="/dashboard/new"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand text-white font-semibold text-sm hover:bg-brand-dark transition-colors shadow-sm"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand text-white font-semibold text-sm hover:bg-brand-dark transition-colors shadow-sm"
           >
-            <span className="text-lg leading-none">+</span>
+            <span className="text-base leading-none">+</span>
             New request
           </Link>
         </div>
 
         {/* Content */}
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin" />
+          <div className="flex items-center justify-center py-24">
+            <div className="w-7 h-7 border-[3px] border-brand border-t-transparent rounded-full animate-spin" />
           </div>
         ) : requests.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-gray-200">
-            <p className="text-4xl mb-4">✦</p>
-            <h3 className="font-semibold text-gray-900 mb-2">
-              No requests yet
-            </h3>
-            <p className="text-sm text-gray-500 mb-6">
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-brand text-xl mx-auto mb-4">
+              ✦
+            </div>
+            <h3 className="font-semibold text-gray-900 mb-1">No requests yet</h3>
+            <p className="text-sm text-gray-400 mb-6 max-w-xs mx-auto">
               Create your first copy request and let Lahjah do the writing.
             </p>
             <Link
@@ -107,42 +116,56 @@ export default function DashboardPage() {
             </Link>
           </div>
         ) : (
-          <div className="space-y-3">
-            {requests.map((req) => (
-              <div
-                key={req.id}
-                className="bg-white rounded-xl border border-gray-100 px-6 py-4 flex items-center justify-between hover:shadow-sm transition-shadow"
-              >
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-gray-900 truncate">
-                    {req.title}
-                  </h3>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {req.createdAt?.toDate().toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-4 ml-4">
-                  {req.copyEn && (
-                    <div className="hidden sm:flex gap-3 text-xs text-gray-400">
-                      <span>EN ✓</span>
-                      <span>AR ✓</span>
+          <div className="space-y-2">
+            {requests.map((req) => {
+              const cfg = STATUS_CONFIG[req.status] ?? STATUS_CONFIG.draft;
+              return (
+                <div
+                  key={req.id}
+                  className="bg-white rounded-xl border border-gray-100 px-5 py-4 flex items-center justify-between hover:shadow-sm transition-shadow cursor-pointer group"
+                >
+                  {/* Left */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-gray-900 truncate group-hover:text-brand transition-colors">
+                      {req.title}
+                    </h3>
+                    <div className="flex items-center gap-3 mt-0.5">
+                      <span className="text-xs text-gray-400">
+                        {req.createdAt?.toDate().toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </span>
+                      {req.tone && (
+                        <span className="text-xs text-gray-300">·</span>
+                      )}
+                      {req.tone && (
+                        <span className="text-xs text-gray-400 capitalize">
+                          {req.tone}
+                        </span>
+                      )}
+                      {req.screenshotURLs && req.screenshotURLs.length > 0 && (
+                        <>
+                          <span className="text-xs text-gray-300">·</span>
+                          <span className="text-xs text-gray-400">
+                            {req.screenshotURLs.length} screenshot
+                            {req.screenshotURLs.length !== 1 ? "s" : ""}
+                          </span>
+                        </>
+                      )}
                     </div>
-                  )}
+                  </div>
+
+                  {/* Right */}
                   <span
-                    className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${
-                      STATUS_COLORS[req.status]
-                    }`}
+                    className={`ml-4 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${cfg.classes}`}
                   >
-                    {req.status}
+                    {cfg.label}
                   </span>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>
