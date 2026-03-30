@@ -186,13 +186,21 @@ export default function RequestDetailPage() {
 
         {/* Actions */}
         <div className="flex gap-3 pb-8">
-          <button
-            disabled
-            title="Available after annotating your screenshots"
-            className="flex-1 py-3 rounded-xl bg-brand text-white font-semibold text-sm opacity-40 cursor-not-allowed"
-          >
-            Generate copy
-          </button>
+          {totalAnnotations > 0 ? (
+            <button
+              className="flex-1 py-3 rounded-xl bg-brand text-white font-semibold text-sm hover:bg-brand-dark transition-colors shadow-sm"
+            >
+              Generate copy
+            </button>
+          ) : (
+            <button
+              disabled
+              title="Annotate at least one screenshot to generate copy"
+              className="flex-1 py-3 rounded-xl bg-brand text-white font-semibold text-sm opacity-40 cursor-not-allowed"
+            >
+              Generate copy
+            </button>
+          )}
         </div>
       </main>
     </div>
