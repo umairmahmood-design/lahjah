@@ -187,11 +187,12 @@ export default function RequestDetailPage() {
         {/* Actions */}
         <div className="flex gap-3 pb-8">
           {totalAnnotations > 0 ? (
-            <button
-              className="flex-1 py-3 rounded-xl bg-brand text-white font-semibold text-sm hover:bg-brand-dark transition-colors shadow-sm"
+            <Link
+              href={`/dashboard/${id}/generate`}
+              className="flex-1 py-3 rounded-xl bg-brand text-white font-semibold text-sm hover:bg-brand-dark transition-colors shadow-sm text-center"
             >
               Generate copy
-            </button>
+            </Link>
           ) : (
             <button
               disabled
