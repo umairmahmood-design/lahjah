@@ -226,7 +226,7 @@ export default function GeneratePage() {
             <button
               onClick={() => annotations.forEach((ann) => generateOne(ann))}
               disabled={anyLoading}
-              className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-4 py-2 rounded-xl bg-ink text-white text-sm font-medium hover:bg-ink/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Regenerate all
             </button>
@@ -265,11 +265,7 @@ export default function GeneratePage() {
                       {ann.label}
                     </span>
                     <span
-                      className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0"
-                      style={{
-                        backgroundColor: `${TYPE_COLORS[ann.type]}18`,
-                        color: TYPE_COLORS[ann.type],
-                      }}
+                      className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0 bg-[#F4F5F6] text-ink"
                     >
                       {ann.type}
                     </span>

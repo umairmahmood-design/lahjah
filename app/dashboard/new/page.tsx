@@ -356,7 +356,7 @@ export default function NewRequestPage() {
             type="button"
             onClick={() => save("draft")}
             disabled={saving || uploadsInProgress}
-            className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex-1 py-3 rounded-xl bg-ink text-white font-semibold text-sm hover:bg-ink/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {saving ? "Saving…" : "Save as draft"}
           </button>

@@ -26,10 +26,10 @@ const STATUS_CONFIG: Record<
   CopyRequest["status"],
   { label: string; classes: string }
 > = {
-  draft: { label: "Draft", classes: "bg-gray-100 text-gray-500" },
-  submitted: { label: "Submitted", classes: "bg-brand/20 text-ink" },
-  approved: { label: "Approved", classes: "bg-green-100 text-green-700" },
-  rejected: { label: "Changes requested", classes: "bg-red-50 text-red-600" },
+  draft: { label: "Draft", classes: "bg-[#F4F5F6] text-ink" },
+  submitted: { label: "Submitted", classes: "bg-[#F4F5F6] text-ink" },
+  approved: { label: "Approved", classes: "bg-[#F4F5F6] text-ink" },
+  rejected: { label: "Changes requested", classes: "bg-[#F4F5F6] text-ink" },
 };
 
 export default function DashboardPage() {

@@ -313,7 +313,7 @@ export default function AnnotatePage() {
                   >
                     Screenshot {i + 1}
                     {count > 0 && (
-                      <span className="bg-brand text-ink text-[10px] px-1.5 py-0.5 rounded-full">
+                      <span className="bg-[#F4F5F6] text-ink text-[10px] px-1.5 py-0.5 rounded-full">
                         {count}
                       </span>
                     )}
@@ -545,7 +545,7 @@ export default function AnnotatePage() {
             <div className="flex gap-2">
               <button
                 onClick={cancelAnnotation}
-                className="flex-1 py-2 rounded-lg border border-white/10 text-gray-400 text-sm font-medium hover:bg-white/5 transition-colors"
+                className="flex-1 py-2 rounded-lg bg-ink text-white text-sm font-medium hover:bg-ink/90 transition-colors"
               >
                 Cancel
               </button>

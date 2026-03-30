@@ -24,7 +24,7 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="max-w-4xl mx-auto px-8 pt-24 pb-20 text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand/20 text-ink text-xs font-medium mb-8">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#F4F5F6] text-ink text-xs font-medium mb-8">
           <span className="w-1.5 h-1.5 rounded-full bg-ink animate-pulse" />
           Powered by Claude AI
         </div>
@@ -45,7 +45,7 @@ export default function LandingPage() {
           </Link>
           <a
             href="#features"
-            className="px-6 py-3 rounded-xl border border-gray-200 text-gray-700 font-semibold text-base hover:bg-gray-50 transition-colors"
+            className="px-6 py-3 rounded-xl bg-ink text-white font-semibold text-base hover:bg-ink/90 transition-colors"
           >
             See how it works
           </a>
