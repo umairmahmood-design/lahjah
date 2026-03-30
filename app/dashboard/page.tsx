@@ -143,8 +143,9 @@ export default function DashboardPage() {
             {requests.map((req) => {
               const cfg = STATUS_CONFIG[req.status] ?? STATUS_CONFIG.draft;
               return (
-                <div
+                <Link
                   key={req.id}
+                  href={`/dashboard/${req.id}`}
                   className="bg-white rounded-xl border border-gray-100 px-5 py-4 flex items-center justify-between hover:shadow-sm transition-shadow cursor-pointer group"
                 >
                   {/* Left */}
@@ -186,7 +187,7 @@ export default function DashboardPage() {
                   >
                     {cfg.label}
                   </span>
-                </div>
+                </Link>
               );
             })}
           </div>
