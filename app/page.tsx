@@ -5,17 +5,17 @@ export default function LandingPage() {
     <div className="min-h-screen bg-white">
       {/* Nav */}
       <nav className="flex items-center justify-between px-8 py-5 border-b border-gray-100">
-        <span className="text-2xl font-bold text-brand">لهجة</span>
+        <span className="text-2xl font-bold text-ink">لهجة</span>
         <div className="flex items-center gap-6">
           <Link
             href="/login"
-            className="text-sm font-medium text-gray-600 hover:text-brand transition-colors"
+            className="text-sm font-medium text-gray-600 hover:text-ink transition-colors"
           >
             Sign in
           </Link>
           <Link
             href="/login"
-            className="inline-flex items-center px-4 py-2 rounded-lg bg-brand text-white text-sm font-medium hover:bg-brand-dark transition-colors"
+            className="inline-flex items-center px-4 py-2 rounded-lg bg-brand text-ink text-sm font-medium hover:bg-brand-dark transition-colors"
           >
             Get started
           </Link>
@@ -24,13 +24,13 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="max-w-4xl mx-auto px-8 pt-24 pb-20 text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 text-brand text-xs font-medium mb-8">
-          <span className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse" />
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand/20 text-ink text-xs font-medium mb-8">
+          <span className="w-1.5 h-1.5 rounded-full bg-ink animate-pulse" />
           Powered by Claude AI
         </div>
         <h1 className="text-5xl font-bold text-gray-900 leading-tight mb-6">
           Copy that speaks{" "}
-          <span className="text-brand">every language</span>
+          <span className="text-ink">every language</span>
         </h1>
         <p className="text-xl text-gray-500 max-w-2xl mx-auto mb-10">
           Lahjah generates and reviews product copy in English and Arabic —
@@ -39,7 +39,7 @@ export default function LandingPage() {
         <div className="flex items-center justify-center gap-4">
           <Link
             href="/login"
-            className="px-6 py-3 rounded-xl bg-brand text-white font-semibold text-base hover:bg-brand-dark transition-colors shadow-sm"
+            className="px-6 py-3 rounded-xl bg-brand text-ink font-semibold text-base hover:bg-brand-dark transition-colors shadow-sm"
           >
             Start generating copy
           </Link>
@@ -83,7 +83,7 @@ export default function LandingPage() {
               key={f.title}
               className="p-6 rounded-2xl border border-gray-100 bg-white hover:shadow-md transition-shadow"
             >
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-brand flex items-center justify-center text-lg font-bold mb-4">
+              <div className="w-10 h-10 rounded-xl bg-brand/20 text-ink flex items-center justify-center text-lg font-bold mb-4">
                 {f.icon}
               </div>
               <h3 className="font-semibold text-gray-900 mb-2">{f.title}</h3>
@@ -94,18 +94,18 @@ export default function LandingPage() {
       </section>
 
       {/* CTA */}
-      <section className="bg-brand">
+      <section className="bg-ink">
         <div className="max-w-4xl mx-auto px-8 py-20 text-center">
           <h2 className="text-3xl font-bold text-white mb-4">
             Ready to ship better copy, faster?
           </h2>
-          <p className="text-blue-200 mb-8 text-lg">
+          <p className="text-gray-400 mb-8 text-lg">
             Join product and design teams using Lahjah to move at the speed of
             their ideas.
           </p>
           <Link
             href="/login"
-            className="inline-flex items-center px-6 py-3 rounded-xl bg-white text-brand font-semibold text-base hover:bg-blue-50 transition-colors"
+            className="inline-flex items-center px-6 py-3 rounded-xl bg-brand text-ink font-semibold text-base hover:bg-brand-dark transition-colors"
           >
             Get started free
           </Link>
@@ -114,7 +114,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="border-t border-gray-100 px-8 py-6 flex items-center justify-between text-sm text-gray-400">
-        <span className="font-bold text-brand">لهجة · Lahjah</span>
+        <span className="font-bold text-ink">لهجة · Lahjah</span>
         <span>© {new Date().getFullYear()} Lahjah. All rights reserved.</span>
       </footer>
     </div>

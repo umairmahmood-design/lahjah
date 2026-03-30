@@ -198,7 +198,7 @@ export default function NewRequestPage() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="text-xs font-medium text-brand hover:text-brand-dark transition-colors"
+              className="text-xs font-medium text-ink hover:text-ink/70 transition-colors"
             >
               + Add images
             </button>
@@ -217,9 +217,9 @@ export default function NewRequestPage() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="w-full border-2 border-dashed border-gray-200 rounded-xl py-10 flex flex-col items-center gap-2 hover:border-brand/40 hover:bg-blue-50/30 transition-all group"
+              className="w-full border-2 border-dashed border-gray-200 rounded-xl py-10 flex flex-col items-center gap-2 hover:border-ink/20 hover:bg-brand/10 transition-all group"
             >
-              <span className="text-3xl text-gray-300 group-hover:text-brand/40 transition-colors">
+              <span className="text-3xl text-gray-300 group-hover:text-ink/40 transition-colors">
                 ⬆
               </span>
               <span className="text-sm text-gray-400">
@@ -286,7 +286,7 @@ export default function NewRequestPage() {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="aspect-square rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-300 hover:border-brand/40 hover:text-brand/40 hover:bg-blue-50/30 transition-all text-2xl"
+                className="aspect-square rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-300 hover:border-ink/20 hover:text-ink/40 hover:bg-brand/10 transition-all text-2xl"
               >
                 +
               </button>
@@ -325,8 +325,8 @@ export default function NewRequestPage() {
                 onClick={() => setTone(t)}
                 className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
                   tone === t
-                    ? "bg-brand text-white border-brand shadow-sm"
-                    : "bg-white text-gray-600 border-gray-200 hover:border-brand/40 hover:text-brand"
+                    ? "bg-brand text-ink border-brand shadow-sm"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-ink/30 hover:text-ink"
                 }`}
               >
                 {t}
@@ -364,7 +364,7 @@ export default function NewRequestPage() {
             type="button"
             onClick={() => save("submitted")}
             disabled={saving || uploadsInProgress}
-            className="flex-1 py-3 rounded-xl bg-brand text-white font-semibold text-sm hover:bg-brand-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+            className="flex-1 py-3 rounded-xl bg-brand text-ink font-semibold text-sm hover:bg-brand-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
           >
             {saving ? "Saving…" : "Submit request"}
           </button>

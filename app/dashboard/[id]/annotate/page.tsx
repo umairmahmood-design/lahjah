@@ -284,7 +284,7 @@ export default function AnnotatePage() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-4 py-2 rounded-lg bg-brand text-white text-sm font-semibold hover:bg-brand-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 rounded-lg bg-brand text-ink text-sm font-semibold hover:bg-brand-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? "Saving…" : "Save"}
           </button>
@@ -313,7 +313,7 @@ export default function AnnotatePage() {
                   >
                     Screenshot {i + 1}
                     {count > 0 && (
-                      <span className="bg-brand/80 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                      <span className="bg-brand text-ink text-[10px] px-1.5 py-0.5 rounded-full">
                         {count}
                       </span>
                     )}
@@ -552,7 +552,7 @@ export default function AnnotatePage() {
               <button
                 onClick={confirmAnnotation}
                 disabled={!newLabel.trim()}
-                className="flex-1 py-2 rounded-lg bg-brand text-white text-sm font-semibold hover:bg-brand-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1 py-2 rounded-lg bg-brand text-ink text-sm font-semibold hover:bg-brand-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Add annotation
               </button>

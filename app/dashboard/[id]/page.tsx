@@ -35,7 +35,7 @@ const STATUS_CONFIG: Record<
   { label: string; classes: string }
 > = {
   draft: { label: "Draft", classes: "bg-gray-100 text-gray-500" },
-  submitted: { label: "Submitted", classes: "bg-blue-50 text-brand" },
+  submitted: { label: "Submitted", classes: "bg-brand/20 text-ink" },
   approved: { label: "Approved", classes: "bg-green-100 text-green-700" },
   rejected: { label: "Changes requested", classes: "bg-red-50 text-red-600" },
 };
@@ -151,7 +151,7 @@ export default function RequestDetailPage() {
             {request.screenshotURLs.length > 0 && (
               <Link
                 href={`/dashboard/${id}/annotate`}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand-dark transition-colors"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-brand text-ink text-xs font-semibold hover:bg-brand-dark transition-colors"
               >
                 {totalAnnotations > 0 ? "Edit annotations" : "Annotate screenshots"}
               </Link>
@@ -173,7 +173,7 @@ export default function RequestDetailPage() {
                       className="w-full h-full object-cover"
                     />
                     {count > 0 && (
-                      <div className="absolute bottom-1.5 right-1.5 bg-brand text-white text-xs font-semibold px-2 py-0.5 rounded-full">
+                      <div className="absolute bottom-1.5 right-1.5 bg-brand text-ink text-xs font-semibold px-2 py-0.5 rounded-full">
                         {count}
                       </div>
                     )}
@@ -189,7 +189,7 @@ export default function RequestDetailPage() {
           {totalAnnotations > 0 ? (
             <Link
               href={`/dashboard/${id}/generate`}
-              className="flex-1 py-3 rounded-xl bg-brand text-white font-semibold text-sm hover:bg-brand-dark transition-colors shadow-sm text-center"
+              className="flex-1 py-3 rounded-xl bg-brand text-ink font-semibold text-sm hover:bg-brand-dark transition-colors shadow-sm text-center"
             >
               Generate copy
             </Link>
@@ -197,7 +197,7 @@ export default function RequestDetailPage() {
             <button
               disabled
               title="Annotate at least one screenshot to generate copy"
-              className="flex-1 py-3 rounded-xl bg-brand text-white font-semibold text-sm opacity-40 cursor-not-allowed"
+              className="flex-1 py-3 rounded-xl bg-brand text-ink font-semibold text-sm opacity-40 cursor-not-allowed"
             >
               Generate copy
             </button>

@@ -189,7 +189,7 @@ export default function GeneratePage() {
           </p>
           <button
             onClick={() => router.push(`/dashboard/${id}`)}
-            className="text-sm text-brand hover:underline"
+            className="text-sm text-ink hover:underline"
           >
             ← Back to request
           </button>
@@ -233,7 +233,7 @@ export default function GeneratePage() {
             <button
               onClick={handleSave}
               disabled={saving || anyLoading || !allDone}
-              className="px-4 py-2 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+              className="px-4 py-2 rounded-xl bg-brand text-ink text-sm font-semibold hover:bg-brand-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
             >
               {saving ? "Saving…" : savedOk ? "Saved ✓" : "Save selections"}
             </button>
@@ -277,7 +277,7 @@ export default function GeneratePage() {
                   <button
                     onClick={() => generateOne(ann)}
                     disabled={isLoading}
-                    className="text-xs text-gray-400 hover:text-brand transition-colors shrink-0 disabled:opacity-40"
+                    className="text-xs text-gray-400 hover:text-ink transition-colors shrink-0 disabled:opacity-40"
                   >
                     {isLoading ? "Generating…" : "Regenerate"}
                   </button>
@@ -329,7 +329,7 @@ export default function GeneratePage() {
                     <p className="text-sm text-red-500">{result.error}</p>
                     <button
                       onClick={() => generateOne(ann)}
-                      className="text-xs text-brand hover:underline shrink-0"
+                      className="text-xs text-ink hover:underline shrink-0"
                     >
                       Try again
                     </button>
@@ -359,7 +359,7 @@ export default function GeneratePage() {
                               }
                               className={`w-full text-left px-4 py-3 rounded-xl border text-sm leading-relaxed transition-all ${
                                 isSelected
-                                  ? "border-brand bg-brand/5 text-brand font-medium"
+                                  ? "border-brand bg-brand/20 text-ink font-medium"
                                   : "border-gray-100 text-gray-700 hover:border-gray-200 hover:bg-gray-50"
                               }`}
                             >
@@ -392,7 +392,7 @@ export default function GeneratePage() {
                               }
                               className={`w-full text-right px-4 py-3 rounded-xl border text-sm leading-relaxed transition-all ${
                                 isSelected
-                                  ? "border-brand bg-brand/5 text-brand font-medium"
+                                  ? "border-brand bg-brand/20 text-ink font-medium"
                                   : "border-gray-100 text-gray-700 hover:border-gray-200 hover:bg-gray-50"
                               }`}
                               dir="rtl"
@@ -423,7 +423,7 @@ export default function GeneratePage() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand-dark transition-colors disabled:opacity-50 shadow-sm"
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-brand text-ink text-sm font-semibold hover:bg-brand-dark transition-colors disabled:opacity-50 shadow-sm"
             >
               {saving ? "Saving…" : savedOk ? "Saved ✓" : "Save selections"}
             </button>

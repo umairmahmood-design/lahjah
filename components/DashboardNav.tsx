@@ -15,19 +15,19 @@ export default function DashboardNav() {
 
   return (
     <header className="bg-white border-b border-gray-100 px-8 py-4 flex items-center justify-between">
-      <Link href="/dashboard" className="text-2xl font-bold text-brand">
+      <Link href="/dashboard" className="text-2xl font-bold text-ink">
         لهجة
       </Link>
       <nav className="flex items-center gap-6">
         <Link
           href="/dashboard"
-          className="text-sm font-medium text-gray-600 hover:text-brand transition-colors"
+          className="text-sm font-medium text-gray-600 hover:text-ink transition-colors"
         >
           Requests
         </Link>
         <Link
           href="/dashboard/new"
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand text-white text-sm font-medium hover:bg-brand-dark transition-colors"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand text-ink text-sm font-medium hover:bg-brand-dark transition-colors"
         >
           <span className="text-lg leading-none">+</span>
           New request

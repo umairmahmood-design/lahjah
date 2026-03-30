@@ -10,10 +10,10 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          DEFAULT: "#1B4FD8",
-          dark: "#1640b0",
-          light: "#3b6fee",
+          DEFAULT: "#FFEA00",
+          dark: "#E6D200",
         },
+        ink: "#222629",
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],

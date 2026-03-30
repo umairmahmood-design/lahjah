@@ -27,7 +27,7 @@ const STATUS_CONFIG: Record<
   { label: string; classes: string }
 > = {
   draft: { label: "Draft", classes: "bg-gray-100 text-gray-500" },
-  submitted: { label: "Submitted", classes: "bg-blue-50 text-brand" },
+  submitted: { label: "Submitted", classes: "bg-brand/20 text-ink" },
   approved: { label: "Approved", classes: "bg-green-100 text-green-700" },
   rejected: { label: "Changes requested", classes: "bg-red-50 text-red-600" },
 };
@@ -100,7 +100,7 @@ export default function DashboardPage() {
           </div>
           <Link
             href="/dashboard/new"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand text-white font-semibold text-sm hover:bg-brand-dark transition-colors shadow-sm"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand text-ink font-semibold text-sm hover:bg-brand-dark transition-colors shadow-sm"
           >
             <span className="text-base leading-none">+</span>
             New request
@@ -124,7 +124,7 @@ export default function DashboardPage() {
           </div>
         ) : requests.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-gray-200">
-            <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-brand text-xl mx-auto mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-brand/20 flex items-center justify-center text-ink text-xl mx-auto mb-4">
               ✦
             </div>
             <h3 className="font-semibold text-gray-900 mb-1">No requests yet</h3>
@@ -133,7 +133,7 @@ export default function DashboardPage() {
             </p>
             <Link
               href="/dashboard/new"
-              className="inline-flex items-center px-4 py-2 rounded-lg bg-brand text-white text-sm font-medium hover:bg-brand-dark transition-colors"
+              className="inline-flex items-center px-4 py-2 rounded-lg bg-brand text-ink text-sm font-medium hover:bg-brand-dark transition-colors"
             >
               + New request
             </Link>
@@ -150,7 +150,7 @@ export default function DashboardPage() {
                 >
                   {/* Left */}
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-gray-900 truncate group-hover:text-brand transition-colors">
+                    <h3 className="font-medium text-gray-900 truncate group-hover:text-ink transition-colors">
                       {req.title}
                     </h3>
                     <div className="flex items-center gap-3 mt-0.5">
