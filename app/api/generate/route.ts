@@ -11,6 +11,7 @@ export async function POST(req: NextRequest) {
     description?: string;
     context?: string;
     tone?: string;
+    existingCopy?: string;
   };
 
   try {
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  const { title, description, context, tone = "professional" } = body;
+  const { title, description, context, tone = "professional", existingCopy } = body;
 
   if (!title || !description) {
     return NextResponse.json(
@@ -43,7 +44,7 @@ Rules:
 
   const userPrompt = `Request title: ${title}
 
-UI element: ${description}${context ? `\n\nBrand/product context: ${context}` : ""}
+UI element: ${description}${existingCopy ? `\n\nCurrent text on this element: "${existingCopy}" — please revise it.` : ""}${context ? `\n\nBrand/product context: ${context}` : ""}
 
 Tone: ${tone}
 

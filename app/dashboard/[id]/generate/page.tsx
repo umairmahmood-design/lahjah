@@ -14,6 +14,7 @@ interface Annotation {
   label: string;
   type: AnnotationType;
   note: string;
+  existingCopy: string;
   x: number;
   y: number;
   width: number;
@@ -116,7 +117,7 @@ export default function GeneratePage() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description, context, tone }),
+        body: JSON.stringify({ title, description, context, tone, existingCopy: ann.existingCopy || undefined }),
       });
 
       if (!res.ok) throw new Error("Generation failed");
@@ -282,13 +283,21 @@ export default function GeneratePage() {
                   </button>
                 </div>
 
-                {/* Designer note */}
-                {ann.note && (
-                  <div className="px-5 py-2.5 bg-gray-50 border-b border-gray-100">
-                    <p className="text-xs text-gray-500">
-                      <span className="font-medium text-gray-400">Note: </span>
-                      {ann.note}
-                    </p>
+                {/* Existing copy + note */}
+                {(ann.existingCopy || ann.note) && (
+                  <div className="px-5 py-2.5 bg-gray-50 border-b border-gray-100 space-y-1">
+                    {ann.existingCopy && (
+                      <p className="text-xs text-gray-500">
+                        <span className="font-medium text-gray-400">Current text: </span>
+                        <span className="italic">&ldquo;{ann.existingCopy}&rdquo;</span>
+                      </p>
+                    )}
+                    {ann.note && (
+                      <p className="text-xs text-gray-500">
+                        <span className="font-medium text-gray-400">Note: </span>
+                        {ann.note}
+                      </p>
+                    )}
                   </div>
                 )}
 

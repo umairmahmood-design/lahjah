@@ -13,6 +13,7 @@ interface Annotation {
   label: string;
   type: AnnotationType;
   note: string;
+  existingCopy: string;
   x: number;      // 0–1
   y: number;      // 0–1
   width: number;  // 0–1
@@ -61,6 +62,7 @@ export default function AnnotatePage() {
   const [newLabel, setNewLabel] = useState("");
   const [newType, setNewType] = useState<AnnotationType>("CTA");
   const [newNote, setNewNote] = useState("");
+  const [newExistingCopy, setNewExistingCopy] = useState("");
   const labelInputRef = useRef<HTMLInputElement>(null);
 
   // Selection
@@ -94,6 +96,7 @@ export default function AnnotatePage() {
       setNewLabel("");
       setNewType("CTA");
       setNewNote("");
+      setNewExistingCopy("");
       setTimeout(() => labelInputRef.current?.focus(), 50);
     }
   }, [pendingRect]);
@@ -166,6 +169,7 @@ export default function AnnotatePage() {
         label: newLabel.trim(),
         type: newType,
         note: newNote.trim(),
+        existingCopy: newExistingCopy.trim(),
         ...pendingRect,
       },
     ]);
@@ -461,6 +465,9 @@ export default function AnnotatePage() {
                       <span className="text-xs text-gray-200 font-medium truncate">{ann.label}</span>
                     </div>
                     <p className="text-[11px] text-gray-500 mt-0.5 ml-4">{ann.type}</p>
+                    {ann.existingCopy && (
+                      <p className="text-[11px] text-gray-600 mt-0.5 ml-4 line-clamp-1 italic">&ldquo;{ann.existingCopy}&rdquo;</p>
+                    )}
                     {ann.note && (
                       <p className="text-[11px] text-gray-600 mt-0.5 ml-4 line-clamp-2">{ann.note}</p>
                     )}
@@ -510,6 +517,19 @@ export default function AnnotatePage() {
               </select>
             </div>
 
+            {/* Existing copy */}
+            <div className="mb-3">
+              <label className="block text-xs text-gray-400 mb-1.5">Existing copy</label>
+              <input
+                type="text"
+                value={newExistingCopy}
+                onChange={(e) => setNewExistingCopy(e.target.value)}
+                placeholder='e.g. "Continue" or "Going the distance, just for you"'
+                className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand/60 transition"
+              />
+              <p className="text-[11px] text-gray-600 mt-1">The current text on this UI element, if any</p>
+            </div>
+
             {/* Note */}
             <div className="mb-5">
               <label className="block text-xs text-gray-400 mb-1.5">Note</label>
@@ -517,7 +537,7 @@ export default function AnnotatePage() {
                 value={newNote}
                 onChange={(e) => setNewNote(e.target.value)}
                 placeholder="e.g. Revise the English and provide an Arabic translation"
-                rows={3}
+                rows={2}
                 className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand/60 transition resize-none"
               />
             </div>
