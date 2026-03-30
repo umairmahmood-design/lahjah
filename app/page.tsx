@@ -1,11 +1,16 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Nav */}
       <nav className="flex items-center justify-between px-8 py-5 border-b border-gray-100">
-        <span className="text-2xl font-bold text-ink">لهجة</span>
+        <div className="flex items-center gap-3">
+          <Image src="/hs-logo.png" alt="HungerStation" height={24} width={52} className="object-contain" />
+          <span className="w-px h-5 bg-gray-200 shrink-0" />
+          <span className="text-2xl font-bold text-ink">لهجة</span>
+        </div>
         <div className="flex items-center gap-6">
           <Link
             href="/login"

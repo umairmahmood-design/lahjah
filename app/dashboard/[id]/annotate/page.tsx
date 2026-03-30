@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useCallback, useRef, useState } from "react";
+import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -236,6 +237,12 @@ export default function AnnotatePage() {
       {/* ── Top bar ── */}
       <header className="flex items-center justify-between px-5 py-3.5 border-b border-white/10 bg-gray-900 shrink-0 gap-4">
         <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-2.5 shrink-0">
+            <Image src="/hs-logo.png" alt="HungerStation" height={20} width={43} className="object-contain brightness-0 invert" />
+            <span className="w-px h-4 bg-white/20 shrink-0" />
+            <span className="text-base font-bold text-white">لهجة</span>
+          </div>
+          <span className="w-px h-4 bg-white/10 shrink-0" />
           <button
             onClick={() => router.push(`/dashboard/${id}`)}
             className="text-gray-400 hover:text-white transition-colors text-sm shrink-0"
