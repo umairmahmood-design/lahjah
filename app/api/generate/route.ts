@@ -30,25 +30,24 @@ export async function POST(req: NextRequest) {
 
   const systemPrompt = `You are Lahjah, an expert bilingual copywriter specialising in Arabic and English product copy for MENA markets.
 
-Your task is to generate compelling, culturally-appropriate copy in BOTH English and Arabic.
+Your task is to generate 3 distinct copy suggestions in BOTH English and Arabic for a specific UI element.
 
 Rules:
-- Keep copy concise and impactful
-- Arabic copy must be natural and idiomatic — not a literal translation
+- Each suggestion must differ meaningfully in phrasing, length, or tone approach
+- Keep all copy concise and impactful
+- Arabic copy must be natural and idiomatic — never a literal translation
 - Respect RTL reading direction and Arabic UX conventions
-- Match the requested tone precisely
+- Match the requested tone precisely across all suggestions
 - Return ONLY valid JSON in this exact shape — no markdown, no extra keys:
-  { "en": "English copy here", "ar": "النص العربي هنا" }`;
+  { "en": ["option 1", "option 2", "option 3"], "ar": ["خيار 1", "خيار 2", "خيار 3"] }`;
 
   const userPrompt = `Request title: ${title}
 
-What to write: ${description}${
-    context ? `\n\nBrand/product context: ${context}` : ""
-  }
+UI element: ${description}${context ? `\n\nBrand/product context: ${context}` : ""}
 
 Tone: ${tone}
 
-Generate the copy now.`;
+Generate 3 distinct suggestions for this UI element now.`;
 
   try {
     const response = await client.messages.create({
@@ -61,11 +60,15 @@ Generate the copy now.`;
     const rawText =
       response.content[0].type === "text" ? response.content[0].text : "";
 
-    // Strip any accidental markdown fences before parsing
     const cleaned = rawText.replace(/```(?:json)?/g, "").trim();
-    const parsed = JSON.parse(cleaned) as { en: string; ar: string };
+    const parsed = JSON.parse(cleaned) as { en: string[]; ar: string[] };
 
-    if (typeof parsed.en !== "string" || typeof parsed.ar !== "string") {
+    if (
+      !Array.isArray(parsed.en) ||
+      !Array.isArray(parsed.ar) ||
+      parsed.en.length === 0 ||
+      parsed.ar.length === 0
+    ) {
       throw new Error("Unexpected response shape from model.");
     }
 
