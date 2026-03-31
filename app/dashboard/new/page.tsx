@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, ChangeEvent } from "react";
+import { useState, useRef, ChangeEvent, KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
@@ -12,6 +12,14 @@ import {
 import { auth, db, storage } from "@/lib/firebase";
 
 type Tone = "Friendly" | "Professional" | "Playful" | "Urgent" | "Formal";
+
+const TONE_DESCRIPTIONS: Record<Tone, string> = {
+  Friendly: "Warm, approachable, conversational",
+  Professional: "Polished, clear, business-appropriate",
+  Playful: "Fun, energetic, light-hearted",
+  Urgent: "Action-oriented, time-sensitive",
+  Formal: "Authoritative, precise, respectful",
+};
 
 interface UploadedFile {
   file: File;
@@ -30,6 +38,8 @@ export default function NewRequestPage() {
   const [title, setTitle] = useState("");
   const [context, setContext] = useState("");
   const [tone, setTone] = useState<Tone>("Professional");
+  const [lockedTerms, setLockedTerms] = useState<string[]>([]);
+  const [termInput, setTermInput] = useState("");
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -107,6 +117,28 @@ export default function NewRequestPage() {
     );
   }
 
+  // ── Locked terms ────────────────────────────────────────────────
+  function commitTerm() {
+    const val = termInput.trim();
+    if (val && !lockedTerms.includes(val)) {
+      setLockedTerms((prev) => [...prev, val]);
+    }
+    setTermInput("");
+  }
+
+  function handleTermKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      commitTerm();
+    } else if (e.key === "Backspace" && termInput === "" && lockedTerms.length > 0) {
+      setLockedTerms((prev) => prev.slice(0, -1));
+    }
+  }
+
+  function removeTerm(term: string) {
+    setLockedTerms((prev) => prev.filter((t) => t !== term));
+  }
+
   // ── Save helpers ────────────────────────────────────────────────
   const uploadsInProgress = files.some(
     (f) => f.downloadUrl === null && f.error === null
@@ -140,10 +172,17 @@ export default function NewRequestPage() {
         .filter((f) => f.downloadUrl)
         .map((f) => f.downloadUrl as string);
 
+      // Commit any partially typed term before saving
+      const finalTerms =
+        termInput.trim() && !lockedTerms.includes(termInput.trim())
+          ? [...lockedTerms, termInput.trim()]
+          : lockedTerms;
+
       await addDoc(collection(db, "copyRequests"), {
         title: title.trim(),
         context: context.trim(),
         tone,
+        lockedTerms: finalTerms,
         screenshotURLs,
         status,
         createdBy: uid,
@@ -333,6 +372,53 @@ export default function NewRequestPage() {
               </button>
             ))}
           </div>
+          {tone && (
+            <p className="text-xs text-gray-400 mt-2.5">
+              {TONE_DESCRIPTIONS[tone]}
+            </p>
+          )}
+        </div>
+
+        {/* Locked terms */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-5">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Locked terms
+          </label>
+          <p className="text-xs text-gray-400 mb-3">
+            Brand names, product terms, or phrases the AI must never alter or translate. Press Enter or comma to add each term.
+          </p>
+          <div className="flex flex-wrap gap-2 min-h-[40px] px-3 py-2 rounded-lg border border-gray-200 focus-within:ring-2 focus-within:ring-brand/20 focus-within:border-brand transition">
+            {lockedTerms.map((term) => (
+              <span
+                key={term}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-ink text-white text-xs font-medium"
+              >
+                {term}
+                <button
+                  type="button"
+                  onClick={() => removeTerm(term)}
+                  className="text-white/60 hover:text-white transition-colors leading-none"
+                  aria-label={`Remove ${term}`}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+            <input
+              type="text"
+              value={termInput}
+              onChange={(e) => setTermInput(e.target.value)}
+              onKeyDown={handleTermKeyDown}
+              onBlur={commitTerm}
+              placeholder={lockedTerms.length === 0 ? "e.g. HungerStation, طلبات" : ""}
+              className="flex-1 min-w-[140px] text-sm outline-none bg-transparent placeholder-gray-300"
+            />
+          </div>
+          {lockedTerms.length > 0 && (
+            <p className="text-xs text-gray-400 mt-2">
+              {lockedTerms.length} locked term{lockedTerms.length !== 1 ? "s" : ""} — the AI will preserve these exactly as written.
+            </p>
+          )}
         </div>
 
         {/* Error */}

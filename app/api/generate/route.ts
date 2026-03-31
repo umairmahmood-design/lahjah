@@ -11,6 +11,7 @@ export async function POST(req: NextRequest) {
     description?: string;
     context?: string;
     tone?: string;
+    lockedTerms?: string[];
     existingCopy?: string;
   };
 
@@ -20,7 +21,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  const { title, description, context, tone = "professional", existingCopy } = body;
+  const { title, description, context, tone = "professional", lockedTerms = [], existingCopy } = body;
 
   if (!title || !description) {
     return NextResponse.json(
@@ -28,6 +29,11 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
+
+  const lockedTermsRule =
+    lockedTerms.length > 0
+      ? `\n- LOCKED TERMS — preserve these exactly as written in every suggestion, in both languages, never translate, paraphrase, or alter them: ${lockedTerms.map((t) => `"${t}"`).join(", ")}`
+      : "";
 
   const systemPrompt = `You are Lahjah, an expert bilingual copywriter specialising in Arabic and English product copy for MENA markets.
 
@@ -38,7 +44,7 @@ Rules:
 - Keep all copy concise and impactful
 - Arabic copy must be natural and idiomatic — never a literal translation
 - Respect RTL reading direction and Arabic UX conventions
-- Match the requested tone precisely across all suggestions
+- Match the requested tone precisely across all suggestions${lockedTermsRule}
 - Return ONLY valid JSON in this exact shape — no markdown, no extra keys:
   { "en": ["option 1", "option 2", "option 3"], "ar": ["خيار 1", "خيار 2", "خيار 3"] }`;
 

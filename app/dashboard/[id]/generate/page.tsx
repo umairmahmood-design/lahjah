@@ -49,6 +49,7 @@ export default function GeneratePage() {
   const [title, setTitle] = useState("");
   const [context, setContext] = useState("");
   const [tone, setTone] = useState("Professional");
+  const [lockedTerms, setLockedTerms] = useState<string[]>([]);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [results, setResults] = useState<Record<string, CopyResult>>({});
   const [selections, setSelections] = useState<Record<string, Selection>>({});
@@ -67,6 +68,7 @@ export default function GeneratePage() {
           setTitle(data.title ?? "");
           setContext(data.context ?? "");
           setTone(data.tone ?? "Professional");
+          setLockedTerms(data.lockedTerms ?? []);
           const anns: Annotation[] = data.annotations ?? [];
           setAnnotations(anns);
 
@@ -117,7 +119,7 @@ export default function GeneratePage() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description, context, tone, existingCopy: ann.existingCopy || undefined }),
+        body: JSON.stringify({ title, description, context, tone, lockedTerms, existingCopy: ann.existingCopy || undefined }),
       });
 
       if (!res.ok) throw new Error("Generation failed");
@@ -220,6 +222,19 @@ export default function GeneratePage() {
                 ? `Generating copy for ${loadingCount} annotation${loadingCount !== 1 ? "s" : ""}…`
                 : `${annotations.length} annotation${annotations.length !== 1 ? "s" : ""} · ${tone}`}
             </p>
+            {lockedTerms.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                <span className="text-xs text-gray-400">Locked:</span>
+                {lockedTerms.map((term) => (
+                  <span
+                    key={term}
+                    className="inline-flex items-center px-2 py-0.5 rounded-full bg-ink text-white text-xs font-medium"
+                  >
+                    {term}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-3 flex-wrap">
