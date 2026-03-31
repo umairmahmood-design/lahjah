@@ -3,9 +3,21 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { doc, getDoc, Timestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import {
+  doc,
+  getDoc,
+  updateDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+  serverTimestamp,
+  Timestamp,
+} from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 import DashboardNav from "@/components/DashboardNav";
+import { STATUS_CONFIG, type RequestStatus } from "@/lib/status";
+import { createNotification } from "@/lib/notifications";
 
 type AnnotationType = "CTA" | "Heading" | "Error Message" | "Tooltip" | "Body";
 
@@ -22,23 +34,15 @@ interface Annotation {
 interface CopyRequest {
   id: string;
   title: string;
-  status: "draft" | "submitted" | "approved" | "rejected";
+  status: RequestStatus;
   tone: string;
   context: string;
   screenshotURLs: string[];
   annotations?: Annotation[];
+  revisionNotes?: string;
   createdAt: Timestamp;
+  createdBy: string;
 }
-
-const STATUS_CONFIG: Record<
-  CopyRequest["status"],
-  { label: string; classes: string }
-> = {
-  draft: { label: "Draft", classes: "bg-[#F4F5F6] text-ink" },
-  submitted: { label: "Submitted", classes: "bg-[#F4F5F6] text-ink" },
-  approved: { label: "Approved", classes: "bg-[#F4F5F6] text-ink" },
-  rejected: { label: "Changes requested", classes: "bg-[#F4F5F6] text-ink" },
-};
 
 export default function RequestDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -46,6 +50,7 @@ export default function RequestDetailPage() {
   const [request, setRequest] = useState<CopyRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -65,6 +70,82 @@ export default function RequestDetailPage() {
     load();
   }, [id]);
 
+  async function handleSubmit() {
+    if (!request) return;
+    setSubmitting(true);
+    try {
+      await updateDoc(doc(db, "copyRequests", id), {
+        status: "submitted",
+        submittedAt: serverTimestamp(),
+      });
+
+      // Notify all admins (Copy Team)
+      const adminsSnap = await getDoc(doc(db, "settings", "admins"));
+      const adminUids: string[] = adminsSnap.exists()
+        ? (adminsSnap.data()?.uids as string[]) ?? []
+        : [];
+
+      await Promise.all(
+        adminUids
+          .filter((uid) => uid !== auth.currentUser?.uid)
+          .map((uid) =>
+            createNotification(
+              uid,
+              id,
+              request.title,
+              `New request submitted for review: "${request.title}"`
+            )
+          )
+      );
+
+      setRequest((prev) => prev ? { ...prev, status: "submitted" } : prev);
+    } catch {
+      setError("Failed to submit. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleResubmit() {
+    if (!request) return;
+    setSubmitting(true);
+    try {
+      await updateDoc(doc(db, "copyRequests", id), {
+        status: "submitted",
+        revisionNotes: null,
+        submittedAt: serverTimestamp(),
+      });
+
+      // Notify admins
+      const adminsSnap = await getDoc(doc(db, "settings", "admins"));
+      const adminUids: string[] = adminsSnap.exists()
+        ? (adminsSnap.data()?.uids as string[]) ?? []
+        : [];
+
+      await Promise.all(
+        adminUids
+          .filter((uid) => uid !== auth.currentUser?.uid)
+          .map((uid) =>
+            createNotification(
+              uid,
+              id,
+              request.title,
+              `"${request.title}" has been revised and resubmitted for review`
+            )
+          )
+      );
+
+      setRequest((prev) =>
+        prev ? { ...prev, status: "submitted", revisionNotes: undefined } : prev
+      );
+    } catch {
+      setError("Failed to resubmit. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  // ── Loading / error states ──────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -98,6 +179,11 @@ export default function RequestDetailPage() {
   const annotationsPerScreenshot = (url: string) =>
     (request.annotations ?? []).filter((a) => a.screenshotUrl === url).length;
 
+  const canSubmit = request.status === "draft" && totalAnnotations > 0;
+  const canResubmit = request.status === "changes_requested";
+  const isEditable = request.status === "draft" || request.status === "changes_requested";
+  const isPending = request.status === "submitted" || request.status === "in_review";
+
   return (
     <div className="min-h-screen bg-gray-50">
       <DashboardNav />
@@ -127,6 +213,41 @@ export default function RequestDetailPage() {
           </p>
         </div>
 
+        {/* Revision notes — shown when changes requested */}
+        {request.status === "changes_requested" && request.revisionNotes && (
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+              <p className="text-sm font-semibold text-red-700">
+                Changes requested
+              </p>
+            </div>
+            <p className="text-sm text-red-700 leading-relaxed">
+              {request.revisionNotes}
+            </p>
+          </div>
+        )}
+
+        {/* Pending review notice */}
+        {isPending && (
+          <div className="bg-brand/10 border border-brand/30 rounded-2xl p-5">
+            <p className="text-sm font-medium text-ink">
+              {request.status === "in_review"
+                ? "The Copy Team is reviewing this request."
+                : "This request has been submitted and is awaiting review."}
+            </p>
+          </div>
+        )}
+
+        {/* Approved notice */}
+        {request.status === "approved" && (
+          <div className="bg-green-50 border border-green-200 rounded-2xl p-5">
+            <p className="text-sm font-semibold text-green-700">
+              This request has been approved by the Copy Team.
+            </p>
+          </div>
+        )}
+
         {/* Feature context */}
         {request.context && (
           <div className="bg-white rounded-2xl border border-gray-100 p-5">
@@ -148,7 +269,7 @@ export default function RequestDetailPage() {
                 </p>
               )}
             </div>
-            {request.screenshotURLs.length > 0 && (
+            {request.screenshotURLs.length > 0 && isEditable && (
               <Link
                 href={`/dashboard/${id}/annotate`}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-brand text-ink text-xs font-semibold hover:bg-brand-dark transition-colors"
@@ -184,22 +305,49 @@ export default function RequestDetailPage() {
           )}
         </div>
 
+        {/* Error */}
+        {error && (
+          <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl border border-red-100">
+            {error}
+          </p>
+        )}
+
         {/* Actions */}
-        <div className="flex gap-3 pb-8">
+        <div className="flex gap-3 pb-8 flex-wrap">
           {totalAnnotations > 0 ? (
             <Link
               href={`/dashboard/${id}/generate`}
-              className="flex-1 py-3 rounded-xl bg-brand text-ink font-semibold text-sm hover:bg-brand-dark transition-colors shadow-sm text-center"
+              className="flex-1 py-3 rounded-xl bg-[#F4F5F6] text-ink font-semibold text-sm hover:bg-gray-200 transition-colors text-center"
             >
-              Generate copy
+              {request.status === "approved" ? "View copy" : "Generate copy"}
             </Link>
           ) : (
             <button
               disabled
               title="Annotate at least one screenshot to generate copy"
-              className="flex-1 py-3 rounded-xl bg-brand text-ink font-semibold text-sm opacity-40 cursor-not-allowed"
+              className="flex-1 py-3 rounded-xl bg-[#F4F5F6] text-ink font-semibold text-sm opacity-40 cursor-not-allowed"
             >
               Generate copy
+            </button>
+          )}
+
+          {canSubmit && (
+            <button
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="flex-1 py-3 rounded-xl bg-brand text-ink font-semibold text-sm hover:bg-brand-dark transition-colors shadow-sm disabled:opacity-50"
+            >
+              {submitting ? "Submitting…" : "Submit for review"}
+            </button>
+          )}
+
+          {canResubmit && (
+            <button
+              onClick={handleResubmit}
+              disabled={submitting}
+              className="flex-1 py-3 rounded-xl bg-brand text-ink font-semibold text-sm hover:bg-brand-dark transition-colors shadow-sm disabled:opacity-50"
+            >
+              {submitting ? "Resubmitting…" : "Resubmit for review"}
             </button>
           )}
         </div>

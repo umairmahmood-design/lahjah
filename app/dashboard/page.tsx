@@ -12,25 +12,16 @@ import {
 import { onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import DashboardNav from "@/components/DashboardNav";
+import { STATUS_CONFIG, type RequestStatus } from "@/lib/status";
 
 interface CopyRequest {
   id: string;
   title: string;
-  status: "draft" | "submitted" | "approved" | "rejected";
+  status: RequestStatus;
   createdAt: Timestamp;
   tone?: string;
   screenshotURLs?: string[];
 }
-
-const STATUS_CONFIG: Record<
-  CopyRequest["status"],
-  { label: string; classes: string }
-> = {
-  draft: { label: "Draft", classes: "bg-[#F4F5F6] text-ink" },
-  submitted: { label: "Submitted", classes: "bg-[#F4F5F6] text-ink" },
-  approved: { label: "Approved", classes: "bg-[#F4F5F6] text-ink" },
-  rejected: { label: "Changes requested", classes: "bg-[#F4F5F6] text-ink" },
-};
 
 export default function DashboardPage() {
   const [requests, setRequests] = useState<CopyRequest[]>([]);
@@ -80,7 +71,9 @@ export default function DashboardPage() {
   }, [uid]);
 
   const drafts = requests.filter((r) => r.status === "draft").length;
-  const submitted = requests.filter((r) => r.status === "submitted").length;
+  const pending = requests.filter(
+    (r) => r.status === "submitted" || r.status === "in_review"
+  ).length;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -93,7 +86,7 @@ export default function DashboardPage() {
             <h1 className="text-2xl font-bold text-gray-900">Copy Requests</h1>
             {!loading && requests.length > 0 && (
               <p className="text-sm text-gray-400 mt-1">
-                {requests.length} total · {submitted} submitted · {drafts} draft
+                {requests.length} total · {pending} in review · {drafts} draft
                 {drafts !== 1 ? "s" : ""}
               </p>
             )}

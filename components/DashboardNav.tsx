@@ -7,14 +7,17 @@ import { useEffect, useState } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
+import NotificationBell from "@/components/NotificationBell";
 
 export default function DashboardNav() {
   const router = useRouter();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [uid, setUid] = useState<string | null>(null);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) return;
+      setUid(user.uid);
       const adminsSnap = await getDoc(doc(db, "settings", "admins"));
       // No admins doc = bootstrap mode, treat as admin
       const adminUids = adminsSnap.exists()
@@ -37,7 +40,7 @@ export default function DashboardNav() {
         <span className="w-px h-5 bg-gray-200 shrink-0" />
         <span className="text-2xl font-bold text-ink">لهجة</span>
       </Link>
-      <nav className="flex items-center gap-6">
+      <nav className="flex items-center gap-4 sm:gap-6">
         <Link
           href="/dashboard"
           className="text-sm font-medium text-gray-600 hover:text-ink transition-colors"
@@ -45,12 +48,20 @@ export default function DashboardNav() {
           Requests
         </Link>
         {isAdmin && (
-          <Link
-            href="/dashboard/guidelines"
-            className="text-sm font-medium text-gray-600 hover:text-ink transition-colors"
-          >
-            Guidelines
-          </Link>
+          <>
+            <Link
+              href="/dashboard/review"
+              className="text-sm font-medium text-gray-600 hover:text-ink transition-colors"
+            >
+              Review queue
+            </Link>
+            <Link
+              href="/dashboard/guidelines"
+              className="text-sm font-medium text-gray-600 hover:text-ink transition-colors"
+            >
+              Guidelines
+            </Link>
+          </>
         )}
         <Link
           href="/dashboard/new"
@@ -59,6 +70,7 @@ export default function DashboardNav() {
           <span className="text-lg leading-none">+</span>
           New request
         </Link>
+        {uid && <NotificationBell uid={uid} />}
         <button
           onClick={handleSignOut}
           className="text-sm text-gray-400 hover:text-gray-600 transition-colors"

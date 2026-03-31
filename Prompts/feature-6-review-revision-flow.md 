@@ -1,0 +1,59 @@
+# Feature 6 — Review & Revision Flow
+
+## Goal
+Once a designer submits a copy request, the Copy Team can review it, 
+approve it, or send it back with revision notes. The designer is notified 
+and can revise and resubmit.
+
+## Request Statuses
+- draft → saved but not submitted
+- submitted → designer submitted, waiting for Copy Team review
+- in_review → Copy Team has opened the request
+- approved → Copy Team approved the copy
+- changes_requested → Copy Team sent it back with notes
+
+## Designer Flow
+- Designer submits a request from the request detail page
+- Status changes to "submitted"
+- Designer can see the status on the dashboard and request detail page
+- If status is "changes_requested", designer can see the revision notes
+- Designer can update the copy selections and resubmit
+- Each resubmission creates a new version in version history
+
+## Copy Team Flow
+- Copy Team sees all submitted requests on their dashboard
+- They can open a request and review the generated copy
+- They can leave overall revision notes (text field)
+- Two action buttons: "Approve" and "Request changes"
+- Approve → status changes to "approved", designer notified
+- Request changes → status changes to "changes_requested", 
+  revision notes saved, designer notified
+
+## Notifications
+- In-app notification badge on the nav showing unread notifications
+- Notification types:
+  - "Your request [title] has been approved"
+  - "Your request [title] needs changes: [notes]"
+  - "New request [title] submitted for review" (for Copy Team)
+- Notifications stored in Firestore under notifications/{userId}
+- Mark as read when clicked
+
+## Data Structure
+Request document updates:
+- status (updated throughout flow)
+- revisionNotes (Copy Team's feedback text)
+- reviewedBy (Copy Team user ID)
+- reviewedAt (timestamp)
+
+## UI
+- Status badges with colors:
+  - draft → #F4F5F6 with #222629 text
+  - submitted → yellow (#FFEA00) with #222629 text
+  - in_review → blue with white text
+  - approved → green with white text
+  - changes_requested → red with white text
+- Revision notes shown in a highlighted box on request detail
+- Notification bell icon in nav with unread count badge
+- Mobile friendly
+```
+
