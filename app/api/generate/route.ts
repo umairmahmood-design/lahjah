@@ -30,6 +30,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Fetch brand guidelines (best-effort — generation still works without them)
+  let guidelinesSection = "";
+  try {
+    const { adminDb } = await import("@/lib/firebase-admin");
+    const snap = await adminDb.doc("settings/guidelines").get();
+    if (snap.exists) {
+      const content = (snap.data()?.content as string | undefined)?.trim();
+      if (content) {
+        guidelinesSection = `\n\nBRAND GUIDELINES (follow these for every suggestion):\n${content}`;
+      }
+    }
+  } catch {
+    // Non-fatal — proceed without guidelines
+  }
+
   const lockedTermsRule =
     lockedTerms.length > 0
       ? `\n- LOCKED TERMS — preserve these exactly as written in every suggestion, in both languages, never translate, paraphrase, or alter them: ${lockedTerms.map((t) => `"${t}"`).join(", ")}`
@@ -46,7 +61,7 @@ Rules:
 - Respect RTL reading direction and Arabic UX conventions
 - Match the requested tone precisely across all suggestions${lockedTermsRule}
 - Return ONLY valid JSON in this exact shape — no markdown, no extra keys:
-  { "en": ["option 1", "option 2", "option 3"], "ar": ["خيار 1", "خيار 2", "خيار 3"] }`;
+  { "en": ["option 1", "option 2", "option 3"], "ar": ["خيار 1", "خيار 2", "خيار 3"] }${guidelinesSection}`;
 
   const userPrompt = `Request title: ${title}
 

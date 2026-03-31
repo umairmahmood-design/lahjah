@@ -3,11 +3,27 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { signOut } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { useEffect, useState } from "react";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 
 export default function DashboardNav() {
   const router = useRouter();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      if (!user) return;
+      const adminsSnap = await getDoc(doc(db, "settings", "admins"));
+      // No admins doc = bootstrap mode, treat as admin
+      const adminUids = adminsSnap.exists()
+        ? (adminsSnap.data()?.uids as string[]) ?? []
+        : null;
+      setIsAdmin(adminUids === null || adminUids.includes(user.uid));
+    });
+    return unsub;
+  }, []);
 
   async function handleSignOut() {
     await signOut(auth);
@@ -28,6 +44,14 @@ export default function DashboardNav() {
         >
           Requests
         </Link>
+        {isAdmin && (
+          <Link
+            href="/dashboard/guidelines"
+            className="text-sm font-medium text-gray-600 hover:text-ink transition-colors"
+          >
+            Guidelines
+          </Link>
+        )}
         <Link
           href="/dashboard/new"
           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand text-ink text-sm font-medium hover:bg-brand-dark transition-colors"
