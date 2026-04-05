@@ -1,36 +1,72 @@
 # Feature 6 — Review & Revision Flow
 
 ## Goal
-Once a designer submits a copy request, the Copy Team can review it, 
-approve it, or send it back with revision notes. The designer is notified 
-and can revise and resubmit.
+Once a designer saves and submits a copy request from the new request page,
+the Copy Team can review the generated copy, approve it, or send it back 
+with revision notes. The request detail page shows different views based 
+on the user's role.
 
 ## Request Statuses
-- draft → saved but not submitted
+- draft → saved but not submitted, only visible to designer
 - submitted → designer submitted, waiting for Copy Team review
 - in_review → Copy Team has opened the request
 - approved → Copy Team approved the copy
-- changes_requested → Copy Team sent it back with notes
+- changes_requested → Copy Team sent it back with revision notes
+
+## Status Labels (shown in UI)
+- draft → "Draft"
+- submitted → "Submitted for review"
+- in_review → "In review"
+- approved → "Approved"
+- changes_requested → "Changes requested"
 
 ## Designer Flow
-- Designer submits a request from the request detail page
+- Designer clicks "Save & Submit for review" on the new request page
 - Status changes to "submitted"
-- Designer can see the status on the dashboard and request detail page
-- If status is "changes_requested", designer can see the revision notes
-- Designer can update the copy selections and resubmit
-- Each resubmission creates a new version in version history
+- Designer is redirected to the request detail page in read-only mode
+- Designer can see their selected EN and AR copy per annotation (read-only)
+- Designer sees status badge "Submitted for review"
+- If status is "changes_requested":
+  - Revision notes from Copy Team shown in a highlighted yellow box
+  - Designer can update their copy selections and resubmit
+  - Each resubmission creates a new version in version history
+- Designer NEVER sees "Approve" or "Request changes" buttons
+- Designer NEVER sees a "Generate copy" button on the detail page
 
 ## Copy Team Flow
-- Copy Team sees all submitted requests on their dashboard
-- They can open a request and review the generated copy
-- They can leave overall revision notes (text field)
-- Two action buttons: "Approve" and "Request changes"
+- Copy Team dashboard shows all submitted/in_review requests
+- Copy Team opens a request → status automatically changes to "in_review"
+- Copy Team sees:
+  - Request title, context, tone, screenshots
+  - Generated copy per annotation (EN and AR, read-only)
+  - Designer's selected options highlighted
+  - Revision notes text field
+  - Two action buttons: "Approve" (green) and "Request changes" (red)
+- Copy Team NEVER sees "Generate copy" button
 - Approve → status changes to "approved", designer notified
-- Request changes → status changes to "changes_requested", 
+- Request changes → status changes to "changes_requested",
   revision notes saved, designer notified
 
+## Role-based Request Detail Page
+The request detail page (/dashboard/[id]) must show different UI based on role:
+
+DESIGNER VIEW:
+- Read-only copy display (EN | AR side by side)
+- Status badge
+- Revision notes box (only if status is "changes_requested")
+- Resubmit button (only if status is "changes_requested")
+- No generate, approve, or request changes buttons
+
+COPY TEAM VIEW:
+- Read-only copy display (EN | AR side by side)
+- Status badge
+- Revision notes text field (always visible)
+- "Approve" button (green, #22C55E, white text)
+- "Request changes" button (red, #EF4444, white text)
+- No generate button
+
 ## Notifications
-- In-app notification badge on the nav showing unread notifications
+- In-app notification badge on the nav showing unread count
 - Notification types:
   - "Your request [title] has been approved"
   - "Your request [title] needs changes: [notes]"
@@ -44,16 +80,16 @@ Request document updates:
 - revisionNotes (Copy Team's feedback text)
 - reviewedBy (Copy Team user ID)
 - reviewedAt (timestamp)
+- selectedCopy (Designer's selected copy per annotation)
+- versionHistory (array of previous submissions)
 
 ## UI
-- Status badges with colors:
-  - draft → #F4F5F6 with #222629 text
-  - submitted → yellow (#FFEA00) with #222629 text
-  - in_review → blue with white text
-  - approved → green with white text
-  - changes_requested → red with white text
-- Revision notes shown in a highlighted box on request detail
+- Status badges:
+  - draft → #F4F5F6 background, #222629 text
+  - submitted → #FFEA00 background, #222629 text
+  - in_review → blue background, white text
+  - approved → green background, white text
+  - changes_requested → red background, white text
+- Revision notes shown in a #FFEA00 highlighted box
 - Notification bell icon in nav with unread count badge
 - Mobile friendly
-```
-

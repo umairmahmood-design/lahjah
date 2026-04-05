@@ -1,24 +1,42 @@
 # Feature 1 — New Request Flow
 
 ## Goal
-A designer can create a new copy request from the dashboard.
+A designer can create a new copy request from the dashboard, annotate 
+the uploaded screenshots, generate copy, and submit for review — all 
+in one continuous flow on the same page.
 
 ## Form Fields
 - Request title (text input, required)
-- Screenshot upload (multiple images, stored in Firebase Storage, show upload progress per file, show thumbnail preview after upload)
+- Screenshot upload (multiple images, stored in Firebase Storage, 
+  show upload progress per file, show thumbnail preview after upload)
+- Annotation tool (inline, appears immediately after screenshots are uploaded)
 - Feature context (textarea, required) — what the feature does and the user goal
-- Tone selector (pills or dropdown): Friendly, Professional, Playful, Urgent, Formal
+- Tone selector (pills): Friendly, Professional, Playful, Urgent, Formal
+- Locked terms (tag input)
+
+## Flow
+1. Designer fills in title
+2. Uploads screenshots
+3. Annotation tool appears inline — designer annotates at least one element
+4. Designer fills in feature context and selects tone
+5. "Generate copy" button becomes enabled only after at least one annotation exists
+6. Designer clicks "Generate copy" — results appear inline below
+7. Designer selects preferred EN and AR option per annotation
+8. Designer clicks "Save & Submit for review" — saves selections to Firestore 
+   and changes status to "submitted"
+9. Designer is redirected to the request detail page (read-only view)
 
 ## Behaviour
-- Save as Draft → saves to Firestore with status: "draft"
-- Submit → saves to Firestore with status: "submitted"
-- Each request stores: title, context, tone, screenshotURLs, status, createdBy (user ID), createdAt (timestamp)
-- After saving, redirect to dashboard
+- Save as Draft → saves to Firestore with status: "draft" (no copy generated yet)
+- Save & Submit for review → saves copy selections and changes status to "submitted"
+- Each request stores: title, context, tone, screenshotURLs, annotations, 
+  selectedCopy, status, createdBy (user ID), createdAt (timestamp)
+- After submitting, redirect to request detail page in read-only mode
 - Dashboard lists all requests with title, status badge, and date
-
 
 ## UI
 - Clean minimal design using Tailwind
-- Brand color #1B4FD8 for buttons and accents
-- Show loading states during upload and save
+- Primary CTA: #FFEA00 background, #222629 text
+- Secondary CTA: #F4F5F6 background, #222629 text
+- Show loading states during upload, annotation save, and generation
 - Mobile friendly

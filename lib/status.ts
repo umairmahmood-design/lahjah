@@ -10,7 +10,7 @@ export const STATUS_CONFIG: Record<
   { label: string; classes: string }
 > = {
   draft: { label: "Draft", classes: "bg-[#F4F5F6] text-ink" },
-  submitted: { label: "Submitted", classes: "bg-brand text-ink" },
+  submitted: { label: "Submitted for review", classes: "bg-brand text-ink" },
   in_review: { label: "In review", classes: "bg-blue-500 text-white" },
   approved: { label: "Approved", classes: "bg-green-500 text-white" },
   changes_requested: {

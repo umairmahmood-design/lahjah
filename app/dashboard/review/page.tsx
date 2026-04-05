@@ -148,7 +148,7 @@ function RequestRow({ req }: { req: CopyRequest }) {
   const cfg = STATUS_CONFIG[req.status] ?? STATUS_CONFIG.draft;
   return (
     <Link
-      href={`/dashboard/${req.id}/review`}
+      href={`/dashboard/${req.id}`}
       className="bg-white rounded-xl border border-gray-100 px-5 py-4 flex items-center justify-between hover:shadow-sm transition-shadow cursor-pointer group"
     >
       <div className="flex-1 min-w-0">
