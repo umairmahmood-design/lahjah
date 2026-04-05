@@ -422,10 +422,10 @@ export default function NewRequestPage() {
     <div className="min-h-screen bg-gray-50">
       <DashboardNav />
 
-      <main className="max-w-3xl mx-auto px-6 py-8 space-y-5">
+      <main className="px-4 sm:px-6 lg:px-8 py-6">
 
-        {/* Header */}
-        <div>
+        {/* Header — full width */}
+        <div className="mb-6">
           <button
             onClick={() => router.push("/dashboard")}
             className="text-xs text-gray-400 hover:text-gray-600 transition-colors mb-3 flex items-center gap-1"
@@ -436,585 +436,616 @@ export default function NewRequestPage() {
           <p className="text-xs text-gray-400 mt-1">Fill in the details, annotate, generate copy, then submit.</p>
         </div>
 
-        {/* ── Title ── */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-5">
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Request title <span className="text-red-400">*</span>
-          </label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. Checkout screen — CTA and error states"
-            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"
-          />
-        </div>
+        {/* Two-column layout */}
+        <div className="flex flex-col lg:flex-row gap-6 items-start">
 
-        {/* ── Screenshots ── */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <label className="text-sm font-medium text-gray-700">Screenshots</label>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="text-xs font-medium text-ink hover:text-ink/70 transition-colors"
-            >
-              + Add images
-            </button>
-          </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={handleFileChange}
-          />
-          {files.length === 0 ? (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full border-2 border-dashed border-gray-200 rounded-xl py-10 flex flex-col items-center gap-2 hover:border-ink/20 hover:bg-brand/10 transition-all group"
-            >
-              <span className="text-3xl text-gray-300 group-hover:text-ink/40 transition-colors">⬆</span>
-              <span className="text-sm text-gray-400">Click to upload images</span>
-              <span className="text-xs text-gray-300">PNG, JPG, WebP</span>
-            </button>
-          ) : (
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-              {files.map((f, i) => (
-                <div key={i} className="relative group aspect-square">
-                  <Image
-                    src={f.previewUrl}
-                    alt={f.file.name}
-                    fill
-                    className="object-cover rounded-xl border border-gray-100"
-                    sizes="120px"
-                  />
-                  {f.progress < 100 && !f.error && (
-                    <div className="absolute inset-0 bg-black/40 rounded-xl flex flex-col items-center justify-center gap-1">
-                      <div className="w-10 h-1 bg-white/30 rounded-full overflow-hidden">
-                        <div className="h-full bg-white rounded-full transition-all" style={{ width: `${f.progress}%` }} />
-                      </div>
-                      <span className="text-white text-xs font-medium">{f.progress}%</span>
-                    </div>
-                  )}
-                  {f.error && (
-                    <div className="absolute inset-0 bg-red-500/60 rounded-xl flex items-center justify-center">
-                      <span className="text-white text-xs font-medium">Failed</span>
-                    </div>
-                  )}
-                  {f.downloadUrl && (
-                    <div className="absolute top-1.5 right-1.5 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
-                      <span className="text-white text-xs">✓</span>
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => removeFile(i)}
-                    className="absolute top-1.5 left-1.5 w-5 h-5 bg-black/50 rounded-full text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                    aria-label="Remove image"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="aspect-square rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-300 hover:border-ink/20 hover:text-ink/40 hover:bg-brand/10 transition-all text-2xl"
-              >
-                +
-              </button>
-            </div>
-          )}
-        </div>
+          {/* ── LEFT COLUMN (~40%) — form fields + sticky actions ── */}
+          <div className="w-full lg:w-[40%] flex flex-col gap-4 lg:sticky lg:top-6">
 
-        {/* ── Inline annotation canvas (appears after upload) ── */}
-        {showAnnotationCanvas && (
-          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-            {/* Canvas header */}
-            <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm font-medium text-gray-700">Annotate screenshots</p>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  Draw boxes around UI elements that need copy
-                </p>
-              </div>
-              <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 shrink-0">
-                <button
-                  onClick={() => { setDrawMode("draw"); setSelectedId(null); }}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    drawMode === "draw" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                  Draw
-                </button>
-                <button
-                  onClick={() => setDrawMode("select")}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    drawMode === "select" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                  Select
-                </button>
-              </div>
+            {/* Title */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Request title <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Checkout screen — CTA and error states"
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"
+              />
             </div>
 
-            {/* Screenshot tabs */}
-            {screenshotUrls.length > 1 && (
-              <div className="flex gap-1.5 px-4 py-2 border-b border-gray-100 overflow-x-auto">
-                {screenshotUrls.map((url, i) => {
-                  const count = annotations.filter((a) => a.screenshotUrl === url).length;
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => { setActiveScreenIdx(i); setSelectedId(null); }}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
-                        i === safeActiveIdx ? "bg-brand text-ink" : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                      }`}
-                    >
-                      Screenshot {i + 1}
-                      {count > 0 && (
-                        <span className="bg-ink text-white text-[10px] px-1.5 py-0.5 rounded-full">
-                          {count}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Canvas area */}
-            <div className="p-4 bg-gray-50 flex justify-center">
-              <div className="relative w-full max-w-2xl" style={{ userSelect: "none" }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={currentUrl}
-                  alt={`Screenshot ${safeActiveIdx + 1}`}
-                  draggable={false}
-                  className="block w-full rounded-lg select-none max-h-[380px] object-contain"
-                />
-                <div
-                  className="absolute inset-0 rounded-lg"
-                  style={{ cursor: drawMode === "draw" ? "crosshair" : "default" }}
-                  onMouseDown={handleMouseDown}
-                  onMouseMove={handleMouseMove}
-                  onMouseUp={handleMouseUp}
-                  onMouseLeave={handleMouseUp}
-                >
-                  {/* Existing annotations */}
-                  {currentAnnotations.map((ann) => {
-                    const isSelected = ann.id === selectedId;
-                    return (
-                      <div
-                        key={ann.id}
-                        className="absolute"
-                        style={{
-                          left: `${ann.x * 100}%`,
-                          top: `${ann.y * 100}%`,
-                          width: `${ann.width * 100}%`,
-                          height: `${ann.height * 100}%`,
-                          border: `2px solid ${TYPE_COLORS[ann.type]}`,
-                          backgroundColor: `${TYPE_COLORS[ann.type]}22`,
-                          boxShadow: isSelected
-                            ? `0 0 0 2px white, 0 0 0 4px ${TYPE_COLORS[ann.type]}`
-                            : undefined,
-                          cursor: drawMode === "select" ? "pointer" : "default",
-                          pointerEvents: drawMode === "select" ? "auto" : "none",
-                        }}
-                        onClick={(e) => {
-                          if (drawMode === "select") {
-                            e.stopPropagation();
-                            setSelectedId(isSelected ? null : ann.id);
-                          }
-                        }}
-                      >
-                        <span
-                          className="absolute text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-sm whitespace-nowrap leading-tight"
-                          style={{ top: -20, left: -1, backgroundColor: TYPE_COLORS[ann.type] }}
-                        >
-                          {ann.label}
-                        </span>
-                      </div>
-                    );
-                  })}
-
-                  {/* Live drawing rect */}
-                  {liveRect && (
-                    <div
-                      className="absolute pointer-events-none"
-                      style={{
-                        left: `${liveRect.x * 100}%`,
-                        top: `${liveRect.y * 100}%`,
-                        width: `${liveRect.w * 100}%`,
-                        height: `${liveRect.h * 100}%`,
-                        border: `2px dashed ${TYPE_COLORS[newType]}`,
-                        backgroundColor: `${TYPE_COLORS[newType]}18`,
-                      }}
-                    />
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Hint bar */}
-            <div className="px-5 py-2.5 border-t border-gray-100">
-              <p className="text-xs text-gray-400 text-center">
-                {drawMode === "draw"
-                  ? "Click and drag on the screenshot to mark a UI element"
-                  : selectedId
-                  ? "Press Delete to remove the selected annotation · Click elsewhere to deselect"
-                  : "Click an annotation box to select it"}
+            {/* Feature context */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Feature context <span className="text-red-400">*</span>
+              </label>
+              <p className="text-xs text-gray-400 mb-2">
+                Describe what this feature does and what the user is trying to accomplish.
               </p>
+              <textarea
+                value={context}
+                onChange={(e) => setContext(e.target.value)}
+                rows={4}
+                placeholder="e.g. This is the checkout screen for a food delivery app. The user has reviewed their cart and is ready to place the order. We need copy for the main CTA button, the order summary heading, and the error state when payment fails."
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition resize-none"
+              />
             </div>
 
-            {/* Annotation list */}
-            {annotations.length > 0 && (
-              <div className="px-5 py-4 border-t border-gray-100">
-                <div className="flex items-center justify-between mb-2.5">
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                    {annotations.length} annotation{annotations.length !== 1 ? "s" : ""}
-                  </p>
-                  {selectedId && drawMode === "select" && (
-                    <button
-                      onClick={() => {
-                        setAnnotations((prev) => prev.filter((a) => a.id !== selectedId));
-                        setSelectedId(null);
-                      }}
-                      className="text-xs text-red-500 hover:text-red-600 transition-colors"
-                    >
-                      Delete selected
-                    </button>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {annotations.map((ann) => (
-                    <button
-                      key={ann.id}
-                      type="button"
-                      onClick={() => {
-                        const idx = screenshotUrls.indexOf(ann.screenshotUrl);
-                        if (idx !== -1) setActiveScreenIdx(idx);
-                        setDrawMode("select");
-                        setSelectedId(ann.id === selectedId ? null : ann.id);
-                      }}
-                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs transition-colors ${
-                        ann.id === selectedId
-                          ? "border-brand bg-brand/15 text-ink"
-                          : "border-gray-100 bg-gray-50 text-gray-600 hover:border-gray-200"
-                      }`}
-                    >
-                      <span
-                        className="w-2 h-2 rounded-sm shrink-0"
-                        style={{ backgroundColor: TYPE_COLORS[ann.type] }}
-                      />
-                      <span className="font-medium">{ann.label}</span>
-                      <span className="text-gray-400">{ann.type}</span>
-                    </button>
-                  ))}
-                </div>
+            {/* Tone */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5">
+              <label className="block text-sm font-medium text-gray-700 mb-3">Tone</label>
+              <div className="flex flex-wrap gap-2">
+                {TONES.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTone(t)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
+                      tone === t
+                        ? "bg-brand text-ink border-brand shadow-sm"
+                        : "bg-white text-gray-600 border-gray-200 hover:border-ink/30 hover:text-ink"
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
               </div>
+              {tone && <p className="text-xs text-gray-400 mt-2.5">{TONE_DESCRIPTIONS[tone]}</p>}
+            </div>
+
+            {/* Locked terms */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Locked terms</label>
+              <p className="text-xs text-gray-400 mb-3">
+                Brand names or phrases the AI must never alter. Press Enter or comma to add.
+              </p>
+              <div className="flex flex-wrap gap-2 min-h-[40px] px-3 py-2 rounded-lg border border-gray-200 focus-within:ring-2 focus-within:ring-brand/20 focus-within:border-brand transition">
+                {lockedTerms.map((term) => (
+                  <span
+                    key={term}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-ink text-white text-xs font-medium"
+                  >
+                    {term}
+                    <button
+                      type="button"
+                      onClick={() => setLockedTerms((prev) => prev.filter((t) => t !== term))}
+                      className="text-white/60 hover:text-white transition-colors leading-none"
+                      aria-label={`Remove ${term}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                <input
+                  type="text"
+                  value={termInput}
+                  onChange={(e) => setTermInput(e.target.value)}
+                  onKeyDown={handleTermKeyDown}
+                  onBlur={commitTerm}
+                  placeholder={lockedTerms.length === 0 ? "e.g. HungerStation, طلبات" : ""}
+                  className="flex-1 min-w-[140px] text-sm outline-none bg-transparent placeholder-gray-300"
+                />
+              </div>
+            </div>
+
+            {/* Error */}
+            {error && (
+              <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl border border-red-100">
+                {error}
+              </p>
             )}
-          </div>
-        )}
 
-        {/* ── Feature context ── */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-5">
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Feature context <span className="text-red-400">*</span>
-          </label>
-          <p className="text-xs text-gray-400 mb-2">
-            Describe what this feature does and what the user is trying to accomplish.
-          </p>
-          <textarea
-            value={context}
-            onChange={(e) => setContext(e.target.value)}
-            rows={4}
-            placeholder="e.g. This is the checkout screen for a food delivery app. The user has reviewed their cart and is ready to place the order. We need copy for the main CTA button, the order summary heading, and the error state when payment fails."
-            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition resize-none"
-          />
-        </div>
+            {/* Upload in-progress notice */}
+            {uploadsInProgress && (
+              <p className="text-xs text-gray-400 flex items-center gap-2 px-1">
+                <span className="w-3 h-3 border-2 border-brand border-t-transparent rounded-full animate-spin inline-block" />
+                Uploading images…
+              </p>
+            )}
 
-        {/* ── Tone ── */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-5">
-          <label className="block text-sm font-medium text-gray-700 mb-3">Tone</label>
-          <div className="flex flex-wrap gap-2">
-            {TONES.map((t) => (
+            {/* Actions */}
+            <div className="flex gap-3 pb-2 lg:pb-0">
               <button
-                key={t}
                 type="button"
-                onClick={() => setTone(t)}
-                className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
-                  tone === t
-                    ? "bg-brand text-ink border-brand shadow-sm"
-                    : "bg-white text-gray-600 border-gray-200 hover:border-ink/30 hover:text-ink"
-                }`}
+                onClick={() => save("draft")}
+                disabled={saving || uploadsInProgress}
+                className="flex-1 py-3 rounded-xl bg-[#F4F5F6] text-ink font-semibold text-sm hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {t}
+                {saving ? "Saving…" : "Save as draft"}
               </button>
-            ))}
-          </div>
-          {tone && <p className="text-xs text-gray-400 mt-2.5">{TONE_DESCRIPTIONS[tone]}</p>}
-        </div>
-
-        {/* ── Locked terms ── */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-5">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Locked terms</label>
-          <p className="text-xs text-gray-400 mb-3">
-            Brand names or phrases the AI must never alter. Press Enter or comma to add.
-          </p>
-          <div className="flex flex-wrap gap-2 min-h-[40px] px-3 py-2 rounded-lg border border-gray-200 focus-within:ring-2 focus-within:ring-brand/20 focus-within:border-brand transition">
-            {lockedTerms.map((term) => (
-              <span
-                key={term}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-ink text-white text-xs font-medium"
+              <button
+                type="button"
+                onClick={() => save("submitted")}
+                disabled={saving || uploadsInProgress || !allDone}
+                title={!allDone ? "Generate and select copy for all annotations first" : undefined}
+                className="flex-1 py-3 rounded-xl bg-brand text-ink font-semibold text-sm hover:bg-brand-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
               >
-                {term}
+                {saving ? "Saving…" : "Save & Submit for review"}
+              </button>
+            </div>
+          </div>
+
+          {/* ── RIGHT COLUMN (~60%) — screenshots + annotation ── */}
+          <div className="w-full lg:flex-1 flex flex-col gap-4">
+
+            {/* Screenshots upload */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5">
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-medium text-gray-700">Screenshots</label>
                 <button
                   type="button"
-                  onClick={() => setLockedTerms((prev) => prev.filter((t) => t !== term))}
-                  className="text-white/60 hover:text-white transition-colors leading-none"
-                  aria-label={`Remove ${term}`}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-xs font-medium text-ink hover:text-ink/70 transition-colors"
                 >
-                  ×
+                  + Add images
                 </button>
-              </span>
-            ))}
-            <input
-              type="text"
-              value={termInput}
-              onChange={(e) => setTermInput(e.target.value)}
-              onKeyDown={handleTermKeyDown}
-              onBlur={commitTerm}
-              placeholder={lockedTerms.length === 0 ? "e.g. HungerStation, طلبات" : ""}
-              className="flex-1 min-w-[140px] text-sm outline-none bg-transparent placeholder-gray-300"
-            />
-          </div>
-        </div>
-
-        {/* ── Generate copy button ── */}
-        {(annotations.length > 0 || uploadedFiles.length > 0) && (
-          <div className="bg-white rounded-2xl border border-gray-100 p-5">
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-              <div>
-                <p className="text-sm font-medium text-gray-700">Generate copy</p>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  {annotations.length === 0
-                    ? "Add at least one annotation above to enable generation"
-                    : generating
-                    ? `Generating copy for ${loadingCount > 0 ? loadingCount : annotations.length} annotation${annotations.length !== 1 ? "s" : ""}…`
-                    : generated
-                    ? `Generated for ${annotations.length} annotation${annotations.length !== 1 ? "s" : ""} · click to regenerate all`
-                    : `Ready — ${annotations.length} annotation${annotations.length !== 1 ? "s" : ""} to generate`}
-                </p>
               </div>
-              <button
-                onClick={handleGenerate}
-                disabled={annotations.length === 0 || uploadsInProgress || generating}
-                className="px-5 py-2.5 rounded-xl bg-ink text-white text-sm font-semibold hover:bg-ink/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {generating ? "Generating…" : generated ? "Regenerate all" : "Generate copy"}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ── Generation results ── */}
-        {generated && (
-          <div className="space-y-4">
-            {annotations.map((ann) => {
-              const result = results[ann.id];
-              const sel = selections[ann.id] ?? { enIdx: 0, arIdx: 0 };
-              const isLoading = result?.status === "loading";
-              const isDone = result?.status === "done";
-              const isError = result?.status === "error";
-
-              return (
-                <div
-                  key={ann.id}
-                  className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleFileChange}
+              />
+              {files.length === 0 ? (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full border-2 border-dashed border-gray-200 rounded-xl py-14 flex flex-col items-center gap-2 hover:border-ink/20 hover:bg-brand/10 transition-all group"
                 >
-                  {/* Card header */}
-                  <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50 gap-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span
-                        className="w-2.5 h-2.5 rounded-sm shrink-0"
-                        style={{ backgroundColor: TYPE_COLORS[ann.type] }}
+                  <span className="text-3xl text-gray-300 group-hover:text-ink/40 transition-colors">⬆</span>
+                  <span className="text-sm text-gray-400">Click to upload images</span>
+                  <span className="text-xs text-gray-300">PNG, JPG, WebP</span>
+                </button>
+              ) : (
+                <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3">
+                  {files.map((f, i) => (
+                    <div key={i} className="relative group aspect-square">
+                      <Image
+                        src={f.previewUrl}
+                        alt={f.file.name}
+                        fill
+                        className="object-cover rounded-xl border border-gray-100"
+                        sizes="120px"
                       />
-                      <span className="font-semibold text-sm text-gray-900 truncate">{ann.label}</span>
-                      <span className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0 bg-[#F4F5F6] text-ink">
-                        {ann.type}
-                      </span>
+                      {f.progress < 100 && !f.error && (
+                        <div className="absolute inset-0 bg-black/40 rounded-xl flex flex-col items-center justify-center gap-1">
+                          <div className="w-10 h-1 bg-white/30 rounded-full overflow-hidden">
+                            <div className="h-full bg-white rounded-full transition-all" style={{ width: `${f.progress}%` }} />
+                          </div>
+                          <span className="text-white text-xs font-medium">{f.progress}%</span>
+                        </div>
+                      )}
+                      {f.error && (
+                        <div className="absolute inset-0 bg-red-500/60 rounded-xl flex items-center justify-center">
+                          <span className="text-white text-xs font-medium">Failed</span>
+                        </div>
+                      )}
+                      {f.downloadUrl && (
+                        <div className="absolute top-1.5 right-1.5 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                          <span className="text-white text-xs">✓</span>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeFile(i)}
+                        className="absolute top-1.5 left-1.5 w-5 h-5 bg-black/50 rounded-full text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                        aria-label="Remove image"
+                      >
+                        ×
+                      </button>
                     </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="aspect-square rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-300 hover:border-ink/20 hover:text-ink/40 hover:bg-brand/10 transition-all text-2xl"
+                  >
+                    +
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Annotation canvas — appears after upload */}
+            {showAnnotationCanvas && (
+              <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                {/* Canvas header */}
+                <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Annotate screenshots</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Draw boxes around UI elements that need copy
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 shrink-0">
                     <button
-                      onClick={() => generateOne(ann)}
-                      disabled={isLoading}
-                      className="text-xs text-gray-400 hover:text-ink transition-colors shrink-0 disabled:opacity-40"
+                      onClick={() => { setDrawMode("draw"); setSelectedId(null); }}
+                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                        drawMode === "draw" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                      }`}
                     >
-                      {isLoading ? "Generating…" : "Regenerate"}
+                      Draw
+                    </button>
+                    <button
+                      onClick={() => setDrawMode("select")}
+                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                        drawMode === "select" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      Select
                     </button>
                   </div>
+                </div>
 
-                  {/* Existing copy + note context */}
-                  {(ann.existingCopy || ann.note) && (
-                    <div className="px-5 py-2.5 bg-gray-50 border-b border-gray-100 space-y-1">
-                      {ann.existingCopy && (
-                        <p className="text-xs text-gray-500">
-                          <span className="font-medium text-gray-400">Current text: </span>
-                          <span className="italic">&ldquo;{ann.existingCopy}&rdquo;</span>
-                        </p>
-                      )}
-                      {ann.note && (
-                        <p className="text-xs text-gray-500">
-                          <span className="font-medium text-gray-400">Note: </span>
-                          {ann.note}
-                        </p>
+                {/* Screenshot tabs */}
+                {screenshotUrls.length > 1 && (
+                  <div className="flex gap-1.5 px-4 py-2 border-b border-gray-100 overflow-x-auto">
+                    {screenshotUrls.map((url, i) => {
+                      const count = annotations.filter((a) => a.screenshotUrl === url).length;
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => { setActiveScreenIdx(i); setSelectedId(null); }}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
+                            i === safeActiveIdx ? "bg-brand text-ink" : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                          }`}
+                        >
+                          Screenshot {i + 1}
+                          {count > 0 && (
+                            <span className="bg-ink text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                              {count}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Canvas area */}
+                <div className="p-4 bg-gray-50 flex justify-center">
+                  <div className="relative w-full" style={{ userSelect: "none" }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={currentUrl}
+                      alt={`Screenshot ${safeActiveIdx + 1}`}
+                      draggable={false}
+                      className="block w-full rounded-lg select-none max-h-[520px] object-contain"
+                    />
+                    <div
+                      className="absolute inset-0 rounded-lg"
+                      style={{ cursor: drawMode === "draw" ? "crosshair" : "default" }}
+                      onMouseDown={handleMouseDown}
+                      onMouseMove={handleMouseMove}
+                      onMouseUp={handleMouseUp}
+                      onMouseLeave={handleMouseUp}
+                    >
+                      {/* Existing annotations */}
+                      {currentAnnotations.map((ann) => {
+                        const isSelected = ann.id === selectedId;
+                        return (
+                          <div
+                            key={ann.id}
+                            className="absolute"
+                            style={{
+                              left: `${ann.x * 100}%`,
+                              top: `${ann.y * 100}%`,
+                              width: `${ann.width * 100}%`,
+                              height: `${ann.height * 100}%`,
+                              border: `2px solid ${TYPE_COLORS[ann.type]}`,
+                              backgroundColor: `${TYPE_COLORS[ann.type]}22`,
+                              boxShadow: isSelected
+                                ? `0 0 0 2px white, 0 0 0 4px ${TYPE_COLORS[ann.type]}`
+                                : undefined,
+                              cursor: drawMode === "select" ? "pointer" : "default",
+                              pointerEvents: drawMode === "select" ? "auto" : "none",
+                            }}
+                            onClick={(e) => {
+                              if (drawMode === "select") {
+                                e.stopPropagation();
+                                setSelectedId(isSelected ? null : ann.id);
+                              }
+                            }}
+                          >
+                            <span
+                              className="absolute text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-sm whitespace-nowrap leading-tight"
+                              style={{ top: -20, left: -1, backgroundColor: TYPE_COLORS[ann.type] }}
+                            >
+                              {ann.label}
+                            </span>
+                          </div>
+                        );
+                      })}
+
+                      {/* Live drawing rect */}
+                      {liveRect && (
+                        <div
+                          className="absolute pointer-events-none"
+                          style={{
+                            left: `${liveRect.x * 100}%`,
+                            top: `${liveRect.y * 100}%`,
+                            width: `${liveRect.w * 100}%`,
+                            height: `${liveRect.h * 100}%`,
+                            border: `2px dashed ${TYPE_COLORS[newType]}`,
+                            backgroundColor: `${TYPE_COLORS[newType]}18`,
+                          }}
+                        />
                       )}
                     </div>
-                  )}
+                  </div>
+                </div>
 
-                  {/* Loading skeleton */}
-                  {isLoading && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
-                      {["English", "Arabic"].map((lang) => (
-                        <div key={lang} className="px-5 py-5">
-                          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">{lang}</p>
-                          <div className="space-y-2.5 animate-pulse">
-                            {[1, 2, 3].map((i) => (
-                              <div key={i} className="h-10 rounded-xl bg-gray-100" style={{ width: `${70 + i * 8}%` }} />
-                            ))}
+                {/* Hint bar */}
+                <div className="px-5 py-2.5 border-t border-gray-100">
+                  <p className="text-xs text-gray-400 text-center">
+                    {drawMode === "draw"
+                      ? "Click and drag on the screenshot to mark a UI element"
+                      : selectedId
+                      ? "Press Delete to remove the selected annotation · Click elsewhere to deselect"
+                      : "Click an annotation box to select it"}
+                  </p>
+                </div>
+
+                {/* Annotation list — detailed */}
+                {annotations.length > 0 && (
+                  <div className="px-5 py-4 border-t border-gray-100">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                        {annotations.length} annotation{annotations.length !== 1 ? "s" : ""}
+                      </p>
+                      {selectedId && drawMode === "select" && (
+                        <button
+                          onClick={() => {
+                            setAnnotations((prev) => prev.filter((a) => a.id !== selectedId));
+                            setSelectedId(null);
+                          }}
+                          className="text-xs text-red-500 hover:text-red-600 transition-colors"
+                        >
+                          Delete selected
+                        </button>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      {annotations.map((ann) => (
+                        <div
+                          key={ann.id}
+                          onClick={() => {
+                            const idx = screenshotUrls.indexOf(ann.screenshotUrl);
+                            if (idx !== -1) setActiveScreenIdx(idx);
+                            setDrawMode("select");
+                            setSelectedId(ann.id === selectedId ? null : ann.id);
+                          }}
+                          className={`flex items-start gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-colors ${
+                            ann.id === selectedId
+                              ? "border-brand bg-brand/10"
+                              : "border-gray-100 bg-gray-50 hover:border-gray-200"
+                          }`}
+                        >
+                          <span
+                            className="w-2.5 h-2.5 rounded-sm shrink-0 mt-1"
+                            style={{ backgroundColor: TYPE_COLORS[ann.type] }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="font-semibold text-sm text-gray-900">{ann.label}</span>
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-[#F4F5F6] text-ink font-medium shrink-0">
+                                {ann.type}
+                              </span>
+                            </div>
+                            {ann.existingCopy && (
+                              <p className="text-xs text-gray-500 mb-0.5">
+                                <span className="text-gray-400">Current: </span>
+                                <span className="italic">&ldquo;{ann.existingCopy}&rdquo;</span>
+                              </p>
+                            )}
+                            {ann.note && (
+                              <p className="text-xs text-gray-400">{ann.note}</p>
+                            )}
                           </div>
                         </div>
                       ))}
                     </div>
-                  )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
 
-                  {/* Error */}
-                  {isError && (
-                    <div className="px-5 py-5 flex items-center justify-between gap-4">
-                      <p className="text-sm text-red-500">{result.error}</p>
-                      <button
-                        onClick={() => generateOne(ann)}
-                        className="text-xs text-ink hover:underline shrink-0"
-                      >
-                        Try again
-                      </button>
-                    </div>
-                  )}
+        {/* ── Below both columns — generate + results (full width) ── */}
+        {(annotations.length > 0 || uploadedFiles.length > 0) && (
+          <div className="mt-6 space-y-4">
 
-                  {/* Suggestions */}
-                  {isDone && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
-                      {/* English */}
-                      <div className="px-5 py-5">
-                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">English</p>
-                        <div className="space-y-2">
-                          {result.en.map((suggestion, i) => {
-                            const isSelected = sel.enIdx === i;
-                            return (
-                              <button
-                                key={i}
-                                onClick={() =>
-                                  setSelections((prev) => ({
-                                    ...prev,
-                                    [ann.id]: { ...prev[ann.id], enIdx: i },
-                                  }))
-                                }
-                                className={`w-full text-left px-4 py-3 rounded-xl border text-sm leading-relaxed transition-all ${
-                                  isSelected
-                                    ? "border-brand bg-brand/20 text-ink font-medium"
-                                    : "border-gray-100 text-gray-700 hover:border-gray-200 hover:bg-gray-50"
-                                }`}
-                              >
-                                <span className="text-[10px] font-semibold uppercase tracking-wide opacity-50 block mb-0.5">
-                                  Option {i + 1}
-                                </span>
-                                {suggestion}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Arabic */}
-                      <div className="px-5 py-5">
-                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Arabic</p>
-                        <div className="space-y-2">
-                          {result.ar.map((suggestion, i) => {
-                            const isSelected = sel.arIdx === i;
-                            return (
-                              <button
-                                key={i}
-                                dir="rtl"
-                                onClick={() =>
-                                  setSelections((prev) => ({
-                                    ...prev,
-                                    [ann.id]: { ...prev[ann.id], arIdx: i },
-                                  }))
-                                }
-                                className={`w-full text-right px-4 py-3 rounded-xl border text-sm leading-relaxed transition-all ${
-                                  isSelected
-                                    ? "border-brand bg-brand/20 text-ink font-medium"
-                                    : "border-gray-100 text-gray-700 hover:border-gray-200 hover:bg-gray-50"
-                                }`}
-                              >
-                                <span
-                                  className="text-[10px] font-semibold uppercase tracking-wide opacity-50 block mb-0.5"
-                                  dir="ltr"
-                                >
-                                  Option {i + 1}
-                                </span>
-                                {suggestion}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  )}
+            {/* Generate copy button */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <p className="text-sm font-medium text-gray-700">Generate copy</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {annotations.length === 0
+                      ? "Add at least one annotation above to enable generation"
+                      : generating
+                      ? `Generating copy for ${loadingCount > 0 ? loadingCount : annotations.length} annotation${annotations.length !== 1 ? "s" : ""}…`
+                      : generated
+                      ? `Generated for ${annotations.length} annotation${annotations.length !== 1 ? "s" : ""} · click to regenerate all`
+                      : `Ready — ${annotations.length} annotation${annotations.length !== 1 ? "s" : ""} to generate`}
+                  </p>
                 </div>
-              );
-            })}
+                <button
+                  onClick={handleGenerate}
+                  disabled={annotations.length === 0 || uploadsInProgress || generating}
+                  className="px-5 py-2.5 rounded-xl bg-ink text-white text-sm font-semibold hover:bg-ink/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {generating ? "Generating…" : generated ? "Regenerate all" : "Generate copy"}
+                </button>
+              </div>
+            </div>
+
+            {/* Generation results */}
+            {generated && (
+              <div className="space-y-4">
+                {annotations.map((ann) => {
+                  const result = results[ann.id];
+                  const sel = selections[ann.id] ?? { enIdx: 0, arIdx: 0 };
+                  const isLoading = result?.status === "loading";
+                  const isDone = result?.status === "done";
+                  const isError = result?.status === "error";
+
+                  return (
+                    <div
+                      key={ann.id}
+                      className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+                    >
+                      {/* Card header */}
+                      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50 gap-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span
+                            className="w-2.5 h-2.5 rounded-sm shrink-0"
+                            style={{ backgroundColor: TYPE_COLORS[ann.type] }}
+                          />
+                          <span className="font-semibold text-sm text-gray-900 truncate">{ann.label}</span>
+                          <span className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0 bg-[#F4F5F6] text-ink">
+                            {ann.type}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => generateOne(ann)}
+                          disabled={isLoading}
+                          className="text-xs text-gray-400 hover:text-ink transition-colors shrink-0 disabled:opacity-40"
+                        >
+                          {isLoading ? "Generating…" : "Regenerate"}
+                        </button>
+                      </div>
+
+                      {/* Existing copy + note context */}
+                      {(ann.existingCopy || ann.note) && (
+                        <div className="px-5 py-2.5 bg-gray-50 border-b border-gray-100 space-y-1">
+                          {ann.existingCopy && (
+                            <p className="text-xs text-gray-500">
+                              <span className="font-medium text-gray-400">Current text: </span>
+                              <span className="italic">&ldquo;{ann.existingCopy}&rdquo;</span>
+                            </p>
+                          )}
+                          {ann.note && (
+                            <p className="text-xs text-gray-500">
+                              <span className="font-medium text-gray-400">Note: </span>
+                              {ann.note}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Loading skeleton */}
+                      {isLoading && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+                          {["English", "Arabic"].map((lang) => (
+                            <div key={lang} className="px-5 py-5">
+                              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">{lang}</p>
+                              <div className="space-y-2.5 animate-pulse">
+                                {[1, 2, 3].map((i) => (
+                                  <div key={i} className="h-10 rounded-xl bg-gray-100" style={{ width: `${70 + i * 8}%` }} />
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Error */}
+                      {isError && (
+                        <div className="px-5 py-5 flex items-center justify-between gap-4">
+                          <p className="text-sm text-red-500">{result.error}</p>
+                          <button
+                            onClick={() => generateOne(ann)}
+                            className="text-xs text-ink hover:underline shrink-0"
+                          >
+                            Try again
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Suggestions */}
+                      {isDone && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+                          {/* English */}
+                          <div className="px-5 py-5">
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">English</p>
+                            <div className="space-y-2">
+                              {result.en.map((suggestion, i) => {
+                                const isSelected = sel.enIdx === i;
+                                return (
+                                  <button
+                                    key={i}
+                                    onClick={() =>
+                                      setSelections((prev) => ({
+                                        ...prev,
+                                        [ann.id]: { ...prev[ann.id], enIdx: i },
+                                      }))
+                                    }
+                                    className={`w-full text-left px-4 py-3 rounded-xl border text-sm leading-relaxed transition-all ${
+                                      isSelected
+                                        ? "border-brand bg-brand/20 text-ink font-medium"
+                                        : "border-gray-100 text-gray-700 hover:border-gray-200 hover:bg-gray-50"
+                                    }`}
+                                  >
+                                    <span className="text-[10px] font-semibold uppercase tracking-wide opacity-50 block mb-0.5">
+                                      Option {i + 1}
+                                    </span>
+                                    {suggestion}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Arabic */}
+                          <div className="px-5 py-5">
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Arabic</p>
+                            <div className="space-y-2">
+                              {result.ar.map((suggestion, i) => {
+                                const isSelected = sel.arIdx === i;
+                                return (
+                                  <button
+                                    key={i}
+                                    dir="rtl"
+                                    onClick={() =>
+                                      setSelections((prev) => ({
+                                        ...prev,
+                                        [ann.id]: { ...prev[ann.id], arIdx: i },
+                                      }))
+                                    }
+                                    className={`w-full text-right px-4 py-3 rounded-xl border text-sm leading-relaxed transition-all ${
+                                      isSelected
+                                        ? "border-brand bg-brand/20 text-ink font-medium"
+                                        : "border-gray-100 text-gray-700 hover:border-gray-200 hover:bg-gray-50"
+                                    }`}
+                                  >
+                                    <span
+                                      className="text-[10px] font-semibold uppercase tracking-wide opacity-50 block mb-0.5"
+                                      dir="ltr"
+                                    >
+                                      Option {i + 1}
+                                    </span>
+                                    {suggestion}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
-        {/* ── Error ── */}
-        {error && (
-          <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl border border-red-100">
-            {error}
-          </p>
-        )}
-
-        {/* ── Upload in-progress notice ── */}
-        {uploadsInProgress && (
-          <p className="text-xs text-gray-400 flex items-center gap-2">
-            <span className="w-3 h-3 border-2 border-brand border-t-transparent rounded-full animate-spin inline-block" />
-            Uploading images…
-          </p>
-        )}
-
-        {/* ── Actions ── */}
-        <div className="flex gap-3 pb-8">
-          <button
-            type="button"
-            onClick={() => save("draft")}
-            disabled={saving || uploadsInProgress}
-            className="flex-1 py-3 rounded-xl bg-[#F4F5F6] text-ink font-semibold text-sm hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {saving ? "Saving…" : "Save as draft"}
-          </button>
-          <button
-            type="button"
-            onClick={() => save("submitted")}
-            disabled={saving || uploadsInProgress || !allDone}
-            title={!allDone ? "Generate and select copy for all annotations first" : undefined}
-            className="flex-1 py-3 rounded-xl bg-brand text-ink font-semibold text-sm hover:bg-brand-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
-          >
-            {saving ? "Saving…" : "Save & Submit for review"}
-          </button>
-        </div>
       </main>
 
       {/* ── New annotation popup ── */}
