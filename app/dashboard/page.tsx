@@ -7,10 +7,14 @@ import {
   query,
   where,
   onSnapshot,
+  deleteDoc,
+  doc,
+  getDoc,
   Timestamp,
 } from "firebase/firestore";
+import { ref, deleteObject } from "firebase/storage";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth, db } from "@/lib/firebase";
+import { auth, db, storage } from "@/lib/firebase";
 import DashboardNav from "@/components/DashboardNav";
 import { STATUS_CONFIG, type RequestStatus } from "@/lib/status";
 
@@ -28,6 +32,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [uid, setUid] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -69,6 +75,33 @@ export default function DashboardPage() {
 
     return unsub;
   }, [uid]);
+
+  async function handleDelete(id: string) {
+    setDeleteLoading(true);
+    try {
+      // Fetch screenshotURLs to delete from Storage
+      const snap = await getDoc(doc(db, "copyRequests", id));
+      if (snap.exists()) {
+        const urls: string[] = snap.data().screenshotURLs ?? [];
+        await Promise.allSettled(
+          urls.map((url) => {
+            try {
+              const path = decodeURIComponent(url.split("/o/")[1].split("?")[0]);
+              return deleteObject(ref(storage, path));
+            } catch {
+              return Promise.resolve();
+            }
+          })
+        );
+      }
+      await deleteDoc(doc(db, "copyRequests", id));
+      setDeletingId(null);
+    } catch {
+      // fail silently — the list will not update if delete failed
+    } finally {
+      setDeleteLoading(false);
+    }
+  }
 
   const drafts = requests.filter((r) => r.status === "draft").length;
   const pending = requests.filter(
@@ -135,57 +168,110 @@ export default function DashboardPage() {
           <div className="space-y-2">
             {requests.map((req) => {
               const cfg = STATUS_CONFIG[req.status] ?? STATUS_CONFIG.draft;
+              const canDelete = req.status === "draft" || req.status === "changes_requested";
               return (
-                <Link
-                  key={req.id}
-                  href={`/dashboard/${req.id}`}
-                  className="bg-white rounded-xl border border-gray-100 px-5 py-4 flex items-center justify-between hover:shadow-sm transition-shadow cursor-pointer group"
-                >
-                  {/* Left */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-gray-900 truncate group-hover:text-ink transition-colors">
-                      {req.title}
-                    </h3>
-                    <div className="flex items-center gap-3 mt-0.5">
-                      <span className="text-xs text-gray-400">
-                        {req.createdAt?.toDate().toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </span>
-                      {req.tone && (
-                        <span className="text-xs text-gray-300">·</span>
-                      )}
-                      {req.tone && (
-                        <span className="text-xs text-gray-400 capitalize">
-                          {req.tone}
-                        </span>
-                      )}
-                      {req.screenshotURLs && req.screenshotURLs.length > 0 && (
-                        <>
-                          <span className="text-xs text-gray-300">·</span>
-                          <span className="text-xs text-gray-400">
-                            {req.screenshotURLs.length} screenshot
-                            {req.screenshotURLs.length !== 1 ? "s" : ""}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Right */}
-                  <span
-                    className={`ml-4 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${cfg.classes}`}
+                <div key={req.id} className="relative group/card">
+                  <Link
+                    href={`/dashboard/${req.id}`}
+                    className="bg-white rounded-xl border border-gray-100 px-5 py-4 flex items-center justify-between hover:shadow-sm transition-shadow cursor-pointer group"
                   >
-                    {cfg.label}
-                  </span>
-                </Link>
+                    {/* Left */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-gray-900 truncate group-hover:text-ink transition-colors">
+                        {req.title}
+                      </h3>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        <span className="text-xs text-gray-400">
+                          {req.createdAt?.toDate().toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </span>
+                        {req.tone && (
+                          <span className="text-xs text-gray-300">·</span>
+                        )}
+                        {req.tone && (
+                          <span className="text-xs text-gray-400 capitalize">
+                            {req.tone}
+                          </span>
+                        )}
+                        {req.screenshotURLs && req.screenshotURLs.length > 0 && (
+                          <>
+                            <span className="text-xs text-gray-300">·</span>
+                            <span className="text-xs text-gray-400">
+                              {req.screenshotURLs.length} screenshot
+                              {req.screenshotURLs.length !== 1 ? "s" : ""}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Right */}
+                    <span
+                      className={`ml-4 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${cfg.classes}`}
+                    >
+                      {cfg.label}
+                    </span>
+                  </Link>
+
+                  {/* Delete button — only for draft / changes_requested */}
+                  {canDelete && (
+                    <button
+                      onClick={() => setDeletingId(req.id)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover/card:opacity-100 focus:opacity-100"
+                      aria-label="Delete request"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                        <path d="M10 11v6M14 11v6" />
+                        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
               );
             })}
           </div>
         )}
       </main>
+      {/* Delete confirmation modal */}
+      {deletingId && (() => {
+        const req = requests.find((r) => r.id === deletingId);
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl border border-gray-100">
+              <h2 className="text-base font-semibold text-gray-900 mb-1">Delete request?</h2>
+              {req && (
+                <p className="text-sm text-gray-500 mb-1 truncate">
+                  &ldquo;{req.title}&rdquo;
+                </p>
+              )}
+              <p className="text-sm text-gray-400">
+                This will permanently delete the request and all uploaded screenshots. This cannot be undone.
+              </p>
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setDeletingId(null)}
+                  disabled={deleteLoading}
+                  className="flex-1 py-2.5 rounded-xl bg-[#F4F5F6] text-ink text-sm font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDelete(deletingId)}
+                  disabled={deleteLoading}
+                  className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors disabled:opacity-50 shadow-sm"
+                >
+                  {deleteLoading ? "Deleting…" : "Delete"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
