@@ -93,7 +93,7 @@ export default function RequestDetailPage() {
               uid,
               id,
               request.title,
-              `New request submitted for review: "${request.title}"`
+              `New request "${request.title}" submitted for review`
             )
           )
       );
