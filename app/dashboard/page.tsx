@@ -170,10 +170,10 @@ export default function DashboardPage() {
               const cfg = STATUS_CONFIG[req.status] ?? STATUS_CONFIG.draft;
               const canDelete = req.status === "draft" || req.status === "changes_requested";
               return (
-                <div key={req.id} className="relative group/card">
+                <div key={req.id} className="flex items-stretch gap-2">
                   <Link
                     href={`/dashboard/${req.id}`}
-                    className="bg-white rounded-xl border border-gray-100 px-5 py-4 flex items-center justify-between hover:shadow-sm transition-shadow cursor-pointer group"
+                    className="flex-1 min-w-0 bg-white rounded-xl border border-gray-100 px-5 py-4 flex items-center justify-between hover:shadow-sm transition-shadow cursor-pointer group"
                   >
                     {/* Left */}
                     <div className="flex-1 min-w-0">
@@ -208,7 +208,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
 
-                    {/* Right */}
+                    {/* Status badge */}
                     <span
                       className={`ml-4 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${cfg.classes}`}
                     >
@@ -217,19 +217,21 @@ export default function DashboardPage() {
                   </Link>
 
                   {/* Delete button — only for draft / changes_requested */}
-                  {canDelete && (
+                  {canDelete ? (
                     <button
                       onClick={() => setDeletingId(req.id)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover/card:opacity-100 focus:opacity-100"
+                      className="w-10 flex items-center justify-center rounded-xl border border-gray-100 bg-white text-gray-300 hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-colors shrink-0"
                       aria-label="Delete request"
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="3 6 5 6 21 6" />
                         <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
                         <path d="M10 11v6M14 11v6" />
                         <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
                       </svg>
                     </button>
+                  ) : (
+                    <div className="w-10 shrink-0" />
                   )}
                 </div>
               );
