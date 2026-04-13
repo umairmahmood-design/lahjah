@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   doc,
   getDoc,
@@ -22,6 +23,12 @@ interface Annotation {
   screenshotUrl: string;
 }
 
+interface StringReview {
+  annotationId: string;
+  approved: boolean;
+  comment: string;
+}
+
 interface CopyRequest {
   id: string;
   title: string;
@@ -30,9 +37,12 @@ interface CopyRequest {
   context?: string;
   createdAt: Timestamp;
   createdBy: string;
-  revisionNotes?: string;
   annotations?: Annotation[];
+  screenshotURLs?: string[];
   copySelections?: Record<string, { en: string; ar: string }>;
+  stringReviews?: StringReview[];
+  // legacy field — kept for display of old requests
+  revisionNotes?: string;
 }
 
 const TYPE_COLORS: Record<string, string> = {
@@ -48,26 +58,26 @@ export default function RequestDetailPage() {
   const router = useRouter();
 
   const [request, setRequest] = useState<CopyRequest | null>(null);
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [isCopyTeam, setIsCopyTeam] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [revisionNotes, setRevisionNotes] = useState("");
   const [acting, setActing] = useState(false);
+
+  // Per-string review state (Copy Team only)
+  const [stringReviews, setStringReviews] = useState<Record<string, { approved: boolean; comment: string }>>({});
 
   useEffect(() => {
     async function load() {
       const user = auth.currentUser;
       if (!user) { router.replace("/login"); return; }
 
-      // Check admin role
       const adminsSnap = await getDoc(doc(db, "settings", "admins"));
       const adminUids = adminsSnap.exists()
         ? (adminsSnap.data()?.uids as string[]) ?? []
         : null;
-      const admin = adminUids === null || adminUids.includes(user.uid);
-      setIsAdmin(admin);
+      const copyTeam = adminUids === null || adminUids.includes(user.uid);
+      setIsCopyTeam(copyTeam);
 
-      // Load request
       try {
         const snap = await getDoc(doc(db, "copyRequests", id));
         if (!snap.exists()) { setError("Request not found."); setLoading(false); return; }
@@ -76,10 +86,20 @@ export default function RequestDetailPage() {
         setRequest({ id: snap.id, ...data });
 
         // Auto-advance to in_review when Copy Team opens a submitted request
-        if (admin && data.status === "submitted") {
+        if (copyTeam && data.status === "submitted") {
           await updateDoc(doc(db, "copyRequests", id), { status: "in_review" });
           setRequest((prev) => prev ? { ...prev, status: "in_review" } : prev);
         }
+
+        // Seed per-string review state from existing stringReviews (if any)
+        const annotations = (data.annotations ?? []) as Annotation[];
+        const existing = (data.stringReviews ?? []) as StringReview[];
+        const initial: Record<string, { approved: boolean; comment: string }> = {};
+        for (const ann of annotations) {
+          const prev = existing.find((r) => r.annotationId === ann.id);
+          initial[ann.id] = { approved: prev?.approved ?? false, comment: prev?.comment ?? "" };
+        }
+        setStringReviews(initial);
       } catch {
         setError("Failed to load request.");
       } finally {
@@ -89,48 +109,35 @@ export default function RequestDetailPage() {
     load();
   }, [id, router]);
 
-  async function handleApprove() {
+  async function handleSubmitReview() {
     if (!request) return;
     setActing(true);
+    setError("");
     try {
-      await updateDoc(doc(db, "copyRequests", id), {
-        status: "approved",
-        reviewedBy: auth.currentUser?.uid,
-        reviewedAt: serverTimestamp(),
-        revisionNotes: null,
-      });
-      await createNotification(
-        request.createdBy, id, request.title,
-        `Your request "${request.title}" has been approved`
-      );
-      router.push("/dashboard/review");
-    } catch {
-      setError("Action failed. Please try again.");
-      setActing(false);
-    }
-  }
+      const reviews: StringReview[] = Object.entries(stringReviews).map(([annotationId, v]) => ({
+        annotationId,
+        approved: v.approved,
+        comment: v.comment.trim(),
+      }));
 
-  async function handleRequestChanges() {
-    if (!request) return;
-    if (!revisionNotes.trim()) {
-      setError("Please add revision notes before requesting changes.");
-      return;
-    }
-    setActing(true);
-    try {
+      const allApproved = reviews.every((r) => r.approved);
+      const newStatus: RequestStatus = allApproved ? "approved" : "changes_requested";
+
       await updateDoc(doc(db, "copyRequests", id), {
-        status: "changes_requested",
-        revisionNotes: revisionNotes.trim(),
+        status: newStatus,
+        stringReviews: reviews,
         reviewedBy: auth.currentUser?.uid,
         reviewedAt: serverTimestamp(),
       });
-      await createNotification(
-        request.createdBy, id, request.title,
-        `Your request "${request.title}" needs changes: ${revisionNotes.trim()}`
-      );
+
+      const message = allApproved
+        ? `Your request "${request.title}" has been approved`
+        : `Your request "${request.title}" needs changes`;
+
+      await createNotification(request.createdBy, id, request.title, message);
       router.push("/dashboard/review");
     } catch {
-      setError("Action failed. Please try again.");
+      setError("Failed to submit review. Please try again.");
       setActing(false);
     }
   }
@@ -166,17 +173,17 @@ export default function RequestDetailPage() {
   const cfg = STATUS_CONFIG[request.status] ?? STATUS_CONFIG.draft;
   const annotations = request.annotations ?? [];
   const copySelections = request.copySelections ?? {};
-  const hasSelections = annotations.some((a) => copySelections[a.id]);
+  const screenshotURLs = request.screenshotURLs ?? [];
+  const existingStringReviews = request.stringReviews ?? [];
   const isResolved = request.status === "approved" || request.status === "changes_requested";
 
-  // Shared header
   const Header = () => (
     <div>
       <button
-        onClick={() => router.push(isAdmin ? "/dashboard/review" : "/dashboard")}
+        onClick={() => router.push(isCopyTeam ? "/dashboard/review" : "/dashboard")}
         className="text-xs text-gray-400 hover:text-gray-600 transition-colors mb-3 flex items-center gap-1"
       >
-        ← {isAdmin ? "Review queue" : "All requests"}
+        ← {isCopyTeam ? "Review queue" : "All requests"}
       </button>
       <div className="flex items-start justify-between gap-4">
         <h1 className="text-xl font-bold text-gray-900">{request.title}</h1>
@@ -193,52 +200,6 @@ export default function RequestDetailPage() {
     </div>
   );
 
-  // Shared copy display
-  const CopyDisplay = () =>
-    hasSelections ? (
-      <div className="bg-white rounded-2xl border border-gray-100 p-5">
-        <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-4">
-          Generated copy
-        </p>
-        <div className="space-y-4">
-          {annotations.map((ann) => {
-            const sel = copySelections[ann.id];
-            return (
-              <div key={ann.id} className="border border-gray-100 rounded-xl overflow-hidden">
-                <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
-                  <span
-                    className="w-2 h-2 rounded-sm shrink-0"
-                    style={{ backgroundColor: TYPE_COLORS[ann.type] ?? "#888" }}
-                  />
-                  <span className="text-xs font-semibold text-gray-700">{ann.label}</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-[#F4F5F6] text-ink font-medium">
-                    {ann.type}
-                  </span>
-                </div>
-                {sel ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
-                    <div className="px-4 py-3">
-                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">English</p>
-                      <p className="text-sm text-gray-800">{sel.en}</p>
-                    </div>
-                    <div className="px-4 py-3" dir="rtl">
-                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1" dir="ltr">Arabic</p>
-                      <p className="text-sm text-gray-800">{sel.ar}</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="px-4 py-3">
-                    <p className="text-xs text-gray-400 italic">No copy selected for this annotation.</p>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    ) : null;
-
-  // Context block
   const ContextBlock = () =>
     request.context ? (
       <div className="bg-white rounded-2xl border border-gray-100 p-5">
@@ -247,24 +208,29 @@ export default function RequestDetailPage() {
       </div>
     ) : null;
 
+  const ScreenshotsBlock = () =>
+    screenshotURLs.length > 0 ? (
+      <div className="bg-white rounded-2xl border border-gray-100 p-5">
+        <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-3">Screenshots</p>
+        <div className="flex gap-3 overflow-x-auto pb-1">
+          {screenshotURLs.map((url, i) => (
+            <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="shrink-0">
+              <div className="relative w-48 h-32 rounded-lg overflow-hidden border border-gray-100 hover:border-gray-300 transition-colors">
+                <Image src={url} alt={`Screenshot ${i + 1}`} fill className="object-cover" />
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+    ) : null;
+
   // ── DESIGNER VIEW ────────────────────────────────────────────────────
-  if (!isAdmin) {
+  if (!isCopyTeam) {
     return (
       <div className="min-h-screen bg-gray-50">
         <DashboardNav />
         <main className="max-w-3xl mx-auto px-6 py-8 space-y-5">
           <Header />
-
-          {/* Revision notes — yellow box (changes_requested only) */}
-          {request.status === "changes_requested" && request.revisionNotes && (
-            <div className="bg-brand/30 border border-brand rounded-2xl p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="w-2 h-2 rounded-full bg-ink shrink-0" />
-                <p className="text-sm font-semibold text-ink">Changes requested</p>
-              </div>
-              <p className="text-sm text-ink leading-relaxed">{request.revisionNotes}</p>
-            </div>
-          )}
 
           {/* Status notices */}
           {(request.status === "submitted" || request.status === "in_review") && (
@@ -285,10 +251,78 @@ export default function RequestDetailPage() {
             </div>
           )}
 
-          <ContextBlock />
-          <CopyDisplay />
+          {request.status === "changes_requested" && (
+            <div className="bg-[#FFEA00]/20 border border-[#FFEA00] rounded-2xl p-4">
+              <p className="text-sm font-semibold text-ink">Changes requested — see comments below each string.</p>
+            </div>
+          )}
 
-          {/* Revise copy action (changes_requested only) */}
+          <ContextBlock />
+          <ScreenshotsBlock />
+
+          {/* Per-string copy cards */}
+          {annotations.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Generated copy</p>
+              {annotations.map((ann) => {
+                const sel = copySelections[ann.id];
+                const review = existingStringReviews.find((r) => r.annotationId === ann.id);
+                const hasComment = request.status === "changes_requested" && review?.comment;
+
+                return (
+                  <div key={ann.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                    {/* Card header */}
+                    <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
+                      <span
+                        className="w-2 h-2 rounded-sm shrink-0"
+                        style={{ backgroundColor: TYPE_COLORS[ann.type] ?? "#888" }}
+                      />
+                      <span className="text-xs font-semibold text-gray-700">{ann.label}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-[#F4F5F6] text-ink font-medium">
+                        {ann.type}
+                      </span>
+                    </div>
+
+                    {/* Copy content */}
+                    {sel ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+                        <div className="px-4 py-3">
+                          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">English</p>
+                          <p className="text-sm text-gray-800">{sel.en}</p>
+                        </div>
+                        <div className="px-4 py-3" dir="rtl">
+                          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1" dir="ltr">Arabic</p>
+                          <p className="text-sm text-gray-800">{sel.ar}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="px-4 py-3">
+                        <p className="text-xs text-gray-400 italic">No copy selected for this annotation.</p>
+                      </div>
+                    )}
+
+                    {/* Per-string reviewer comment */}
+                    {hasComment && (
+                      <div className="mx-4 mb-4 mt-1 bg-[#FFEA00]/30 border border-[#FFEA00] rounded-xl px-4 py-3">
+                        <p className="text-[10px] font-semibold text-ink uppercase tracking-wide mb-1">Reviewer comment</p>
+                        <p className="text-sm text-ink leading-relaxed">{review!.comment}</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Legacy revisionNotes fallback (old requests without stringReviews) */}
+          {request.status === "changes_requested" && request.revisionNotes && existingStringReviews.length === 0 && (
+            <div className="bg-[#FFEA00]/30 border border-[#FFEA00] rounded-2xl p-5">
+              <p className="text-xs font-semibold text-ink uppercase tracking-wide mb-2">Revision notes</p>
+              <p className="text-sm text-ink leading-relaxed">{request.revisionNotes}</p>
+            </div>
+          )}
+
+          {/* Resubmit action */}
           {request.status === "changes_requested" && (
             <div className="pb-8">
               <Link
@@ -311,18 +345,113 @@ export default function RequestDetailPage() {
       <main className="max-w-3xl mx-auto px-6 py-8 space-y-5">
         <Header />
         <ContextBlock />
+        <ScreenshotsBlock />
 
-        {/* Previous revision notes (if any) */}
-        {request.revisionNotes && (
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-5">
-            <p className="text-xs font-medium text-red-600 uppercase tracking-wide mb-2">
-              Previous revision notes
-            </p>
-            <p className="text-sm text-red-700 leading-relaxed">{request.revisionNotes}</p>
+        {/* Per-string review cards */}
+        {annotations.length > 0 && (
+          <div className="space-y-3">
+            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Review each string</p>
+            {annotations.map((ann) => {
+              const sel = copySelections[ann.id];
+              const rev = stringReviews[ann.id] ?? { approved: false, comment: "" };
+
+              return (
+                <div
+                  key={ann.id}
+                  className={`bg-white rounded-2xl border overflow-hidden transition-colors ${
+                    rev.approved ? "border-green-300" : "border-gray-100"
+                  }`}
+                >
+                  {/* Card header with approve toggle */}
+                  <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
+                    <span
+                      className="w-2 h-2 rounded-sm shrink-0"
+                      style={{ backgroundColor: TYPE_COLORS[ann.type] ?? "#888" }}
+                    />
+                    <span className="text-xs font-semibold text-gray-700 flex-1">{ann.label}</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-[#F4F5F6] text-ink font-medium">
+                      {ann.type}
+                    </span>
+                    {/* Approve toggle */}
+                    {!isResolved && (
+                      <button
+                        onClick={() =>
+                          setStringReviews((prev) => ({
+                            ...prev,
+                            [ann.id]: { ...prev[ann.id], approved: !prev[ann.id]?.approved },
+                          }))
+                        }
+                        className={`ml-2 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                          rev.approved
+                            ? "bg-green-500 text-white border-green-500"
+                            : "bg-white text-gray-500 border-gray-200 hover:border-green-400"
+                        }`}
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        {rev.approved ? "Approved" : "Approve"}
+                      </button>
+                    )}
+                    {isResolved && (
+                      <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                        existingStringReviews.find((r) => r.annotationId === ann.id)?.approved
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-600"
+                      }`}>
+                        {existingStringReviews.find((r) => r.annotationId === ann.id)?.approved ? "Approved" : "Changes requested"}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Copy content */}
+                  {sel ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+                      <div className="px-4 py-3">
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">English</p>
+                        <p className="text-sm text-gray-800">{sel.en}</p>
+                      </div>
+                      <div className="px-4 py-3" dir="rtl">
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1" dir="ltr">Arabic</p>
+                        <p className="text-sm text-gray-800">{sel.ar}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="px-4 py-3">
+                      <p className="text-xs text-gray-400 italic">No copy selected for this annotation.</p>
+                    </div>
+                  )}
+
+                  {/* Per-string comment field */}
+                  {!isResolved && (
+                    <div className="px-4 pb-4 pt-2">
+                      <textarea
+                        value={rev.comment}
+                        onChange={(e) =>
+                          setStringReviews((prev) => ({
+                            ...prev,
+                            [ann.id]: { ...prev[ann.id], comment: e.target.value },
+                          }))
+                        }
+                        rows={2}
+                        placeholder="Leave a comment for this string (optional)…"
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition resize-none text-gray-700 placeholder-gray-300"
+                      />
+                    </div>
+                  )}
+
+                  {/* Show saved comment if resolved */}
+                  {isResolved && existingStringReviews.find((r) => r.annotationId === ann.id)?.comment && (
+                    <div className="mx-4 mb-4 mt-1 bg-[#FFEA00]/20 border border-[#FFEA00] rounded-xl px-4 py-3">
+                      <p className="text-[10px] font-semibold text-ink uppercase tracking-wide mb-1">Your comment</p>
+                      <p className="text-sm text-ink">{existingStringReviews.find((r) => r.annotationId === ann.id)?.comment}</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
-
-        <CopyDisplay />
 
         {/* Error */}
         {error && (
@@ -331,40 +460,16 @@ export default function RequestDetailPage() {
           </p>
         )}
 
-        {/* Review actions */}
+        {/* Submit review button */}
         {!isResolved ? (
-          <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Revision notes
-              </label>
-              <p className="text-xs text-gray-400 mb-2">
-                Required if requesting changes. Explain what needs to be revised.
-              </p>
-              <textarea
-                value={revisionNotes}
-                onChange={(e) => setRevisionNotes(e.target.value)}
-                rows={4}
-                placeholder="e.g. The Arabic CTA sounds too formal. Please try a warmer, more conversational tone."
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition resize-none"
-              />
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={handleRequestChanges}
-                disabled={acting}
-                className="flex-1 py-3 rounded-xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 transition-colors disabled:opacity-50"
-              >
-                {acting ? "Sending…" : "Request changes"}
-              </button>
-              <button
-                onClick={handleApprove}
-                disabled={acting}
-                className="flex-1 py-3 rounded-xl bg-green-500 text-white font-semibold text-sm hover:bg-green-600 transition-colors shadow-sm disabled:opacity-50"
-              >
-                {acting ? "Approving…" : "Approve"}
-              </button>
-            </div>
+          <div className="pb-8">
+            <button
+              onClick={handleSubmitReview}
+              disabled={acting}
+              className="w-full py-3 rounded-xl bg-brand text-ink font-semibold text-sm hover:bg-brand-dark transition-colors shadow-sm disabled:opacity-50"
+            >
+              {acting ? "Submitting…" : "Submit review"}
+            </button>
           </div>
         ) : (
           <div className={`rounded-2xl p-5 border ${

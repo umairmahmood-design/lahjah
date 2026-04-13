@@ -31,7 +31,3 @@ Stored in Firestore under settings/guidelines:
 - Brand color #FFEA00 for primary actions
 - Secondary actions #F4F5F6 with #222629 text
 ```
-
-Save with **Cmd+S**, then paste this into Claude Code:
-```
-Read the file prompts/feature-5-brand-guidelines-upload.md and build everything described in it.

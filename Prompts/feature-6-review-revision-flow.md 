@@ -2,16 +2,16 @@
 
 ## Goal
 Once a designer saves and submits a copy request from the new request page,
-the Copy Team can review the generated copy, approve it, or send it back 
-with revision notes. The request detail page shows different views based 
-on the user's role.
+the Copy Team can review the generated copy string by string, leave per-item 
+comments, and submit their review. The request detail page shows different 
+views based on the user's role.
 
 ## Request Statuses
 - draft → saved but not submitted, only visible to designer
 - submitted → designer submitted, waiting for Copy Team review
 - in_review → Copy Team has opened the request
-- approved → Copy Team approved the copy
-- changes_requested → Copy Team sent it back with revision notes
+- approved → Copy Team approved all copy strings
+- changes_requested → Copy Team left comments on one or more strings
 
 ## Status Labels (shown in UI)
 - draft → "Draft"
@@ -27,8 +27,9 @@ on the user's role.
 - Designer can see their selected EN and AR copy per annotation (read-only)
 - Designer sees status badge "Submitted for review"
 - If status is "changes_requested":
-  - Revision notes from Copy Team shown in a highlighted yellow box
-  - Designer can update their copy selections and resubmit
+  - Each copy string that has a comment shows the reviewer's comment 
+    in a highlighted yellow box below that string
+  - Designer can update their copy selections per string and resubmit
   - Each resubmission creates a new version in version history
 - Designer NEVER sees "Approve" or "Request changes" buttons
 - Designer NEVER sees a "Generate copy" button on the detail page
@@ -36,40 +37,52 @@ on the user's role.
 ## Copy Team Flow
 - Copy Team dashboard shows all submitted/in_review requests
 - Copy Team opens a request → status automatically changes to "in_review"
-- Copy Team sees:
-  - Request title, context, tone, screenshots
-  - Generated copy per annotation (EN and AR, read-only)
-  - Designer's selected options highlighted
-  - Revision notes text field
-  - Two action buttons: "Approve" (green) and "Request changes" (red)
+- Copy Team reviews each copy string individually
+- For each copy string, reviewer can:
+  - Mark as approved (green checkmark toggle per string)
+  - Leave a comment/revision note on that specific string (text input)
+- Once done reviewing all strings, reviewer clicks "Submit review"
+- Status logic after submit:
+  - If all strings are approved → status changes to "approved"
+  - If any string has a comment → status changes to "changes_requested"
+- Designer is notified either way
 - Copy Team NEVER sees "Generate copy" button
-- Approve → status changes to "approved", designer notified
-- Request changes → status changes to "changes_requested",
-  revision notes saved, designer notified
 
 ## Role-based Request Detail Page
 The request detail page (/dashboard/[id]) must show different UI based on role:
 
 DESIGNER VIEW:
-- Read-only copy display (EN | AR side by side)
-- Status badge
-- Revision notes box (only if status is "changes_requested")
+- Request title, feature context, tone shown at the top
+- Screenshots displayed as reference (read-only, scrollable)
+- Each annotation shown as an individual card:
+  - Annotation label + type badge
+  - Selected EN copy (LTR, read-only)
+  - Selected AR copy (RTL, dir="rtl", read-only)
+  - If status is "changes_requested" and string has a comment:
+    show reviewer's comment in a #FFEA00 highlighted box
+    and allow designer to update their selection for that string
+- Status badge at the top
 - Resubmit button (only if status is "changes_requested")
-- No generate, approve, or request changes buttons
+- No generate, approve, or submit review buttons
 
 COPY TEAM VIEW:
-- Read-only copy display (EN | AR side by side)
-- Status badge
-- Revision notes text field (always visible)
-- "Approve" button (green, #22C55E, white text)
-- "Request changes" button (red, #EF4444, white text)
-- No generate button
+- Request title, feature context, tone shown at the top
+- Screenshots displayed as reference (read-only, scrollable)
+- Each annotation shown as an individual card containing:
+  - Annotation label + type badge
+  - Designer's selected EN copy (LTR)
+  - Designer's selected AR copy (RTL, dir="rtl")
+  - Approve toggle (green checkmark) per string
+  - Comment field per string (text input, optional)
+- "Submit review" button at the bottom 
+  (primary CTA: #FFEA00 background, #222629 text)
+- No "Approve all", "Request changes", or "Generate copy" buttons
 
 ## Notifications
 - In-app notification badge on the nav showing unread count
 - Notification types:
   - "Your request [title] has been approved"
-  - "Your request [title] needs changes: [notes]"
+  - "Your request [title] needs changes"
   - "New request [title] submitted for review" (for Copy Team)
 - Notifications stored in Firestore under notifications/{userId}
 - Mark as read when clicked
@@ -77,10 +90,11 @@ COPY TEAM VIEW:
 ## Data Structure
 Request document updates:
 - status (updated throughout flow)
-- revisionNotes (Copy Team's feedback text)
 - reviewedBy (Copy Team user ID)
 - reviewedAt (timestamp)
 - selectedCopy (Designer's selected copy per annotation)
+- stringReviews: array of { annotationId, approved, comment } 
+  (per-string review data from Copy Team)
 - versionHistory (array of previous submissions)
 
 ## UI
@@ -90,6 +104,6 @@ Request document updates:
   - in_review → blue background, white text
   - approved → green background, white text
   - changes_requested → red background, white text
-- Revision notes shown in a #FFEA00 highlighted box
+- Reviewer comments shown in #FFEA00 highlighted box per string
 - Notification bell icon in nav with unread count badge
 - Mobile friendly
