@@ -95,7 +95,7 @@ Task: ${taskInstructions[task]}`;
 
   try {
     const response = await client.messages.create({
-      model: "claude-opus-4-6",
+      model: "claude-sonnet-4-6",
       max_tokens: 1024,
       system: systemPrompt,
       messages: [{ role: "user", content: userPrompt }],
@@ -118,9 +118,10 @@ Task: ${taskInstructions[task]}`;
 
     return NextResponse.json(parsed);
   } catch (err: unknown) {
-    console.error("[/api/generate] Error:", err);
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[/api/generate] Error:", message);
     return NextResponse.json(
-      { error: "Copy generation failed. Please try again." },
+      { error: `Copy generation failed: ${message}` },
       { status: 500 }
     );
   }

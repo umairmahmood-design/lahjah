@@ -9,6 +9,8 @@ import { createNotification } from "@/lib/notifications";
 import { type RequestStatus } from "@/lib/status";
 
 type AnnotationType = "CTA" | "Heading" | "Error Message" | "Tooltip" | "Body Copy";
+type CharacterLimit = "approximately_same" | "exactly_same" | "no_limit";
+type AnnotationTask = "revise_and_translate" | "arabic_only" | "english_only";
 
 interface Annotation {
   id: string;
@@ -17,6 +19,8 @@ interface Annotation {
   type: AnnotationType;
   note: string;
   existingCopy: string;
+  characterLimit?: CharacterLimit;
+  task?: AnnotationTask;
   x: number;
   y: number;
   width: number;
@@ -127,7 +131,16 @@ export default function GeneratePage() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description, context, tone, lockedTerms, existingCopy: ann.existingCopy || undefined }),
+        body: JSON.stringify({
+        title,
+        description,
+        context,
+        tone,
+        lockedTerms,
+        existingCopy: ann.existingCopy || undefined,
+        characterLimit: ann.characterLimit,
+        task: ann.task,
+      }),
       });
 
       if (!res.ok) throw new Error("Generation failed");
