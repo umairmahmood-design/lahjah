@@ -104,8 +104,9 @@ export default function DashboardPage() {
     }
   }
 
-  const drafts = requests.filter((r) => r.status === "draft").length;
-  const pending = requests.filter(
+  const visibleRequests = requests.filter((r) => r.status !== "closed");
+  const drafts = visibleRequests.filter((r) => r.status === "draft").length;
+  const pending = visibleRequests.filter(
     (r) => r.status === "submitted" || r.status === "in_review"
   ).length;
 
@@ -118,9 +119,9 @@ export default function DashboardPage() {
         <div className="flex items-start justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Copy Requests</h1>
-            {!loading && requests.length > 0 && (
+            {!loading && visibleRequests.length > 0 && (
               <p className="text-sm text-gray-400 mt-1">
-                {requests.length} total · {pending} in review · {drafts} draft
+                {visibleRequests.length} total · {pending} in review · {drafts} draft
                 {drafts !== 1 ? "s" : ""}
               </p>
             )}
@@ -149,7 +150,7 @@ export default function DashboardPage() {
               Refresh
             </button>
           </div>
-        ) : requests.length === 0 ? (
+        ) : visibleRequests.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-gray-200">
             <div className="w-12 h-12 rounded-2xl bg-brand/20 flex items-center justify-center text-ink text-xl mx-auto mb-4">
               ✦
@@ -167,7 +168,7 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {requests.map((req) => {
+            {visibleRequests.map((req) => {
               const cfg = STATUS_CONFIG[req.status] ?? STATUS_CONFIG.draft;
               const canDelete = req.status === "draft" || req.status === "changes_requested";
               return (

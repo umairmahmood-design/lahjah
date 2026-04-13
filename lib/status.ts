@@ -3,7 +3,8 @@ export type RequestStatus =
   | "submitted"
   | "in_review"
   | "approved"
-  | "changes_requested";
+  | "changes_requested"
+  | "closed";
 
 export const STATUS_CONFIG: Record<
   RequestStatus,
@@ -17,4 +18,5 @@ export const STATUS_CONFIG: Record<
     label: "Changes requested",
     classes: "bg-red-500 text-white",
   },
+  closed: { label: "Closed", classes: "bg-[#F4F5F6] text-ink" },
 };

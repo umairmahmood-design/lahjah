@@ -27,6 +27,7 @@ interface StringReview {
   annotationId: string;
   approved: boolean;
   comment: string;
+  designerReply?: string;
 }
 
 interface CopyRequest {
@@ -62,9 +63,14 @@ export default function RequestDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [acting, setActing] = useState(false);
+  const [closingRequest, setClosingRequest] = useState(false);
 
   // Per-string review state (Copy Team only)
   const [stringReviews, setStringReviews] = useState<Record<string, { approved: boolean; comment: string }>>({});
+
+  // Per-string designer reply state
+  const [designerReplies, setDesignerReplies] = useState<Record<string, string>>({});
+  const [savingReply, setSavingReply] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -95,11 +101,14 @@ export default function RequestDetailPage() {
         const annotations = (data.annotations ?? []) as Annotation[];
         const existing = (data.stringReviews ?? []) as StringReview[];
         const initial: Record<string, { approved: boolean; comment: string }> = {};
+        const initialReplies: Record<string, string> = {};
         for (const ann of annotations) {
           const prev = existing.find((r) => r.annotationId === ann.id);
           initial[ann.id] = { approved: prev?.approved ?? false, comment: prev?.comment ?? "" };
+          initialReplies[ann.id] = prev?.designerReply ?? "";
         }
         setStringReviews(initial);
+        setDesignerReplies(initialReplies);
       } catch {
         setError("Failed to load request.");
       } finally {
@@ -142,6 +151,38 @@ export default function RequestDetailPage() {
     }
   }
 
+  async function handleCloseRequest() {
+    if (!request) return;
+    setActing(true);
+    try {
+      await updateDoc(doc(db, "copyRequests", id), { status: "closed" });
+      setRequest((prev) => prev ? { ...prev, status: "closed" } : prev);
+      setClosingRequest(false);
+    } catch {
+      setError("Failed to close request. Please try again.");
+    } finally {
+      setActing(false);
+    }
+  }
+
+  async function handleSaveReply(annotationId: string) {
+    if (!request) return;
+    setSavingReply(annotationId);
+    try {
+      const updated = (request.stringReviews ?? []).map((r) =>
+        r.annotationId === annotationId
+          ? { ...r, designerReply: designerReplies[annotationId]?.trim() ?? "" }
+          : r
+      );
+      await updateDoc(doc(db, "copyRequests", id), { stringReviews: updated });
+      setRequest((prev) => prev ? { ...prev, stringReviews: updated } : prev);
+    } catch {
+      setError("Failed to save reply. Please try again.");
+    } finally {
+      setSavingReply(null);
+    }
+  }
+
   // ── Loading ──────────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -175,7 +216,7 @@ export default function RequestDetailPage() {
   const copySelections = request.copySelections ?? {};
   const screenshotURLs = request.screenshotURLs ?? [];
   const existingStringReviews = request.stringReviews ?? [];
-  const isResolved = request.status === "approved" || request.status === "changes_requested";
+  const isResolved = request.status === "approved" || request.status === "changes_requested" || request.status === "closed";
 
   const Header = () => (
     <div>
@@ -187,9 +228,19 @@ export default function RequestDetailPage() {
       </button>
       <div className="flex items-start justify-between gap-4">
         <h1 className="text-xl font-bold text-gray-900">{request.title}</h1>
-        <span className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${cfg.classes}`}>
-          {cfg.label}
-        </span>
+        <div className="flex items-center gap-2 shrink-0">
+          {!isCopyTeam && request.status === "changes_requested" && (
+            <button
+              onClick={() => setClosingRequest(true)}
+              className="px-3 py-1 rounded-full text-xs font-medium bg-[#F4F5F6] text-ink hover:bg-gray-200 transition-colors"
+            >
+              Close request
+            </button>
+          )}
+          <span className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${cfg.classes}`}>
+            {cfg.label}
+          </span>
+        </div>
       </div>
       <p className="text-xs text-gray-400 mt-1">
         {request.createdAt?.toDate().toLocaleDateString("en-US", {
@@ -257,6 +308,12 @@ export default function RequestDetailPage() {
             </div>
           )}
 
+          {request.status === "closed" && (
+            <div className="bg-[#F4F5F6] border border-gray-200 rounded-2xl p-4">
+              <p className="text-sm font-semibold text-ink">This request has been closed and archived.</p>
+            </div>
+          )}
+
           <ContextBlock />
           <ScreenshotsBlock />
 
@@ -301,11 +358,32 @@ export default function RequestDetailPage() {
                       </div>
                     )}
 
-                    {/* Per-string reviewer comment */}
+                    {/* Per-string reviewer comment + designer reply */}
                     {hasComment && (
-                      <div className="mx-4 mb-4 mt-1 bg-[#FFEA00]/30 border border-[#FFEA00] rounded-xl px-4 py-3">
-                        <p className="text-[10px] font-semibold text-ink uppercase tracking-wide mb-1">Reviewer comment</p>
-                        <p className="text-sm text-ink leading-relaxed">{review!.comment}</p>
+                      <div className="mx-4 mb-4 mt-1 space-y-2">
+                        <div className="bg-[#FFEA00]/30 border border-[#FFEA00] rounded-xl px-4 py-3">
+                          <p className="text-[10px] font-semibold text-ink uppercase tracking-wide mb-1">Reviewer comment</p>
+                          <p className="text-sm text-ink leading-relaxed">{review!.comment}</p>
+                        </div>
+                        {/* Designer reply */}
+                        <div className="flex gap-2">
+                          <textarea
+                            value={designerReplies[ann.id] ?? ""}
+                            onChange={(e) =>
+                              setDesignerReplies((prev) => ({ ...prev, [ann.id]: e.target.value }))
+                            }
+                            rows={2}
+                            placeholder="Add a comment or note for the reviewer…"
+                            className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition resize-none text-gray-700 placeholder-gray-300"
+                          />
+                          <button
+                            onClick={() => handleSaveReply(ann.id)}
+                            disabled={savingReply === ann.id}
+                            className="self-end px-3 py-2 rounded-lg bg-brand text-ink text-xs font-semibold hover:bg-brand-dark transition-colors disabled:opacity-50 shrink-0"
+                          >
+                            {savingReply === ann.id ? "Saving…" : "Send"}
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -334,6 +412,34 @@ export default function RequestDetailPage() {
             </div>
           )}
         </main>
+
+        {/* Close request confirmation modal */}
+        {closingRequest && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl border border-gray-100">
+              <h2 className="text-base font-semibold text-gray-900 mb-2">Close this request?</h2>
+              <p className="text-sm text-gray-500">
+                Are you sure you want to close this request? It will be archived and no longer visible in your active requests.
+              </p>
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setClosingRequest(false)}
+                  disabled={acting}
+                  className="flex-1 py-2.5 rounded-xl bg-[#F4F5F6] text-ink text-sm font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCloseRequest}
+                  disabled={acting}
+                  className="flex-1 py-2.5 rounded-xl bg-[#F4F5F6] text-ink text-sm font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50"
+                >
+                  {acting ? "Closing…" : "Close request"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -440,13 +546,26 @@ export default function RequestDetailPage() {
                     </div>
                   )}
 
-                  {/* Show saved comment if resolved */}
-                  {isResolved && existingStringReviews.find((r) => r.annotationId === ann.id)?.comment && (
-                    <div className="mx-4 mb-4 mt-1 bg-[#FFEA00]/20 border border-[#FFEA00] rounded-xl px-4 py-3">
-                      <p className="text-[10px] font-semibold text-ink uppercase tracking-wide mb-1">Your comment</p>
-                      <p className="text-sm text-ink">{existingStringReviews.find((r) => r.annotationId === ann.id)?.comment}</p>
-                    </div>
-                  )}
+                  {/* Show saved comment + designer reply if resolved */}
+                  {isResolved && (() => {
+                    const savedReview = existingStringReviews.find((r) => r.annotationId === ann.id);
+                    return (
+                      <>
+                        {savedReview?.comment && (
+                          <div className={`mx-4 mt-1 bg-[#FFEA00]/20 border border-[#FFEA00] rounded-xl px-4 py-3 ${savedReview.designerReply ? "mb-2" : "mb-4"}`}>
+                            <p className="text-[10px] font-semibold text-ink uppercase tracking-wide mb-1">Your comment</p>
+                            <p className="text-sm text-ink">{savedReview.comment}</p>
+                          </div>
+                        )}
+                        {savedReview?.designerReply && (
+                          <div className="mx-4 mb-4 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
+                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Designer reply</p>
+                            <p className="text-sm text-gray-700">{savedReview.designerReply}</p>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               );
             })}
