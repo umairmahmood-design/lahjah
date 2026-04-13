@@ -13,6 +13,8 @@ export async function POST(req: NextRequest) {
     tone?: string;
     lockedTerms?: string[];
     existingCopy?: string;
+    characterLimit?: "approximately_same" | "exactly_same" | "no_limit";
+    task?: "revise_and_translate" | "arabic_only" | "english_only";
   };
 
   try {
@@ -21,7 +23,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  const { title, description, context, tone = "professional", lockedTerms = [], existingCopy } = body;
+  const {
+    title,
+    description,
+    context,
+    tone = "professional",
+    lockedTerms = [],
+    existingCopy,
+    characterLimit = "no_limit",
+    task = "revise_and_translate",
+  } = body;
 
   if (!title || !description) {
     return NextResponse.json(
@@ -50,16 +61,27 @@ export async function POST(req: NextRequest) {
       ? `\n- LOCKED TERMS — preserve these exactly as written in every suggestion, in both languages, never translate, paraphrase, or alter them: ${lockedTerms.map((t) => `"${t}"`).join(", ")}`
       : "";
 
-  const systemPrompt = `You are Lahjah, an expert bilingual copywriter specialising in Arabic and English product copy for MENA markets.
+  const characterLimitRule =
+    characterLimit === "approximately_same" && existingCopy
+      ? `\n- CHARACTER LIMIT — each suggestion must be within ±10 characters of the existing copy length (${existingCopy.length} characters)`
+      : characterLimit === "exactly_same" && existingCopy
+      ? `\n- CHARACTER LIMIT — each suggestion must be exactly ${existingCopy.length} characters long`
+      : "";
 
-Your task is to generate 3 distinct copy suggestions in BOTH English and Arabic for a specific UI element.
+  const taskInstructions: Record<typeof task, string> = {
+    revise_and_translate: "Generate 3 distinct suggestions for both English and Arabic.",
+    arabic_only: `Arabic translation only. The 'en' array must contain the original English text repeated 3 times unchanged: ["${existingCopy ?? description}", "${existingCopy ?? description}", "${existingCopy ?? description}"]. Generate 3 distinct Arabic translations in the 'ar' array.`,
+    english_only: `English revision only. Generate 3 distinct English suggestions in the 'en' array. The 'ar' array must contain 3 empty strings: ["", "", ""].`,
+  };
+
+  const systemPrompt = `You are Lahjah, an expert bilingual copywriter specialising in Arabic and English product copy for MENA markets.
 
 Rules:
 - Each suggestion must differ meaningfully in phrasing, length, or tone approach
 - Keep all copy concise and impactful
 - Arabic copy must be natural and idiomatic — never a literal translation
 - Respect RTL reading direction and Arabic UX conventions
-- Match the requested tone precisely across all suggestions${lockedTermsRule}
+- Match the requested tone precisely across all suggestions${lockedTermsRule}${characterLimitRule}
 - Return ONLY valid JSON in this exact shape — no markdown, no extra keys:
   { "en": ["option 1", "option 2", "option 3"], "ar": ["خيار 1", "خيار 2", "خيار 3"] }${guidelinesSection}`;
 
@@ -69,7 +91,7 @@ UI element: ${description}${existingCopy ? `\n\nCurrent text on this element: "$
 
 Tone: ${tone}
 
-Generate 3 distinct suggestions for this UI element now.`;
+Task: ${taskInstructions[task]}`;
 
   try {
     const response = await client.messages.create({

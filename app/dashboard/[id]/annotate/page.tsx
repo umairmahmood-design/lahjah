@@ -7,6 +7,8 @@ import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 type AnnotationType = "CTA" | "Heading" | "Error Message" | "Tooltip" | "Body Copy";
+type CharacterLimit = "approximately_same" | "exactly_same" | "no_limit";
+type AnnotationTask = "revise_and_translate" | "arabic_only" | "english_only";
 
 interface Annotation {
   id: string;
@@ -15,6 +17,8 @@ interface Annotation {
   type: AnnotationType;
   note: string;
   existingCopy: string;
+  characterLimit: CharacterLimit;
+  task: AnnotationTask;
   x: number;      // 0–1
   y: number;      // 0–1
   width: number;  // 0–1
@@ -64,6 +68,8 @@ export default function AnnotatePage() {
   const [newType, setNewType] = useState<AnnotationType>("CTA");
   const [newNote, setNewNote] = useState("");
   const [newExistingCopy, setNewExistingCopy] = useState("");
+  const [newCharacterLimit, setNewCharacterLimit] = useState<CharacterLimit>("no_limit");
+  const [newTask, setNewTask] = useState<AnnotationTask>("revise_and_translate");
   const labelInputRef = useRef<HTMLInputElement>(null);
 
   // Selection
@@ -98,6 +104,8 @@ export default function AnnotatePage() {
       setNewType("CTA");
       setNewNote("");
       setNewExistingCopy("");
+      setNewCharacterLimit("no_limit");
+      setNewTask("revise_and_translate");
       setTimeout(() => labelInputRef.current?.focus(), 50);
     }
   }, [pendingRect]);
@@ -171,6 +179,8 @@ export default function AnnotatePage() {
         type: newType,
         note: newNote.trim(),
         existingCopy: newExistingCopy.trim(),
+        characterLimit: newCharacterLimit,
+        task: newTask,
         ...pendingRect,
       },
     ]);
@@ -538,15 +548,43 @@ export default function AnnotatePage() {
             </div>
 
             {/* Note */}
-            <div className="mb-5">
+            <div className="mb-3">
               <label className="block text-xs text-gray-400 mb-1.5">Note</label>
               <textarea
                 value={newNote}
                 onChange={(e) => setNewNote(e.target.value)}
-                placeholder="e.g. Revise the English and provide an Arabic translation"
+                placeholder="e.g. Make the tone warmer"
                 rows={2}
                 className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand/60 transition resize-none"
               />
+            </div>
+
+            {/* Character limit */}
+            <div className="mb-3">
+              <label className="block text-xs text-gray-400 mb-1.5">Character limit</label>
+              <select
+                value={newCharacterLimit}
+                onChange={(e) => setNewCharacterLimit(e.target.value as CharacterLimit)}
+                className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand/60 transition"
+              >
+                <option value="no_limit" className="bg-gray-900">No character limit</option>
+                <option value="approximately_same" className="bg-gray-900">Keep approximately the same (±10 characters)</option>
+                <option value="exactly_same" className="bg-gray-900">Keep exactly the same as existing copy</option>
+              </select>
+            </div>
+
+            {/* Task */}
+            <div className="mb-5">
+              <label className="block text-xs text-gray-400 mb-1.5">Task</label>
+              <select
+                value={newTask}
+                onChange={(e) => setNewTask(e.target.value as AnnotationTask)}
+                className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand/60 transition"
+              >
+                <option value="revise_and_translate" className="bg-gray-900">Revise English + provide Arabic translation</option>
+                <option value="arabic_only" className="bg-gray-900">Arabic translation only</option>
+                <option value="english_only" className="bg-gray-900">English revision only</option>
+              </select>
             </div>
 
             <div className="flex gap-2">

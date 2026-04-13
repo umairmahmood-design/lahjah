@@ -28,6 +28,9 @@ interface UploadedFile {
   error: string | null;
 }
 
+type CharacterLimit = "approximately_same" | "exactly_same" | "no_limit";
+type AnnotationTask = "revise_and_translate" | "arabic_only" | "english_only";
+
 interface Annotation {
   id: string;
   screenshotUrl: string;
@@ -35,6 +38,8 @@ interface Annotation {
   type: AnnotationType;
   note: string;
   existingCopy: string;
+  characterLimit: CharacterLimit;
+  task: AnnotationTask;
   x: number;
   y: number;
   width: number;
@@ -110,6 +115,8 @@ export default function NewRequestPage() {
   const [newType, setNewType] = useState<AnnotationType>("CTA");
   const [newNote, setNewNote] = useState("");
   const [newExistingCopy, setNewExistingCopy] = useState("");
+  const [newCharacterLimit, setNewCharacterLimit] = useState<CharacterLimit>("no_limit");
+  const [newTask, setNewTask] = useState<AnnotationTask>("revise_and_translate");
 
   // Generation state
   const [results, setResults] = useState<Record<string, CopyResult>>({});
@@ -262,6 +269,8 @@ export default function NewRequestPage() {
       setNewType("CTA");
       setNewNote("");
       setNewExistingCopy("");
+      setNewCharacterLimit("no_limit");
+      setNewTask("revise_and_translate");
       setTimeout(() => labelInputRef.current?.focus(), 50);
     }
   }, [pendingRect]);
@@ -297,6 +306,8 @@ export default function NewRequestPage() {
       type: newType,
       note: newNote.trim(),
       existingCopy: newExistingCopy.trim(),
+      characterLimit: newCharacterLimit,
+      task: newTask,
       ...pendingRect,
     };
     setAnnotations((prev) => [...prev, newAnn]);
@@ -323,6 +334,8 @@ export default function NewRequestPage() {
           tone,
           lockedTerms,
           existingCopy: ann.existingCopy || undefined,
+          characterLimit: ann.characterLimit,
+          task: ann.task,
         }),
       });
       if (!res.ok) throw new Error("Generation failed");
@@ -1094,15 +1107,41 @@ export default function NewRequestPage() {
               <p className="text-[11px] text-gray-400 mt-1">The current text on this UI element, if any</p>
             </div>
 
-            <div className="mb-5">
+            <div className="mb-3">
               <label className="block text-xs text-gray-500 mb-1.5">Note</label>
               <textarea
                 value={newNote}
                 onChange={(e) => setNewNote(e.target.value)}
-                placeholder="e.g. Revise the English and provide an Arabic translation"
+                placeholder="e.g. Make the tone warmer"
                 rows={2}
                 className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition resize-none"
               />
+            </div>
+
+            <div className="mb-3">
+              <label className="block text-xs text-gray-500 mb-1.5">Character limit</label>
+              <select
+                value={newCharacterLimit}
+                onChange={(e) => setNewCharacterLimit(e.target.value as CharacterLimit)}
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"
+              >
+                <option value="no_limit">No character limit</option>
+                <option value="approximately_same">Keep approximately the same (±10 characters)</option>
+                <option value="exactly_same">Keep exactly the same as existing copy</option>
+              </select>
+            </div>
+
+            <div className="mb-5">
+              <label className="block text-xs text-gray-500 mb-1.5">Task</label>
+              <select
+                value={newTask}
+                onChange={(e) => setNewTask(e.target.value as AnnotationTask)}
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"
+              >
+                <option value="revise_and_translate">Revise English + provide Arabic translation</option>
+                <option value="arabic_only">Arabic translation only</option>
+                <option value="english_only">English revision only</option>
+              </select>
             </div>
 
             <div className="flex gap-2">
