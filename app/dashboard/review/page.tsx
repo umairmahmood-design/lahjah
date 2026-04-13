@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   collection,
   query,
@@ -23,6 +24,7 @@ interface CopyRequest {
   status: RequestStatus;
   createdAt: Timestamp;
   tone?: string;
+  screenshotURLs?: string[];
 }
 
 const REVIEW_STATUSES: RequestStatus[] = ["submitted", "in_review", "approved", "changes_requested"];
@@ -149,13 +151,40 @@ function RequestRow({ req }: { req: CopyRequest }) {
   return (
     <Link
       href={`/dashboard/${req.id}`}
-      className="bg-white rounded-xl border border-gray-100 px-5 py-4 flex items-center justify-between hover:shadow-sm transition-shadow cursor-pointer group"
+      className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center gap-4 hover:shadow-sm transition-shadow cursor-pointer group"
     >
+      {/* Thumbnail */}
+      <div className="relative shrink-0 w-[60px] h-[60px] rounded-lg overflow-hidden bg-gray-100 border border-gray-100">
+        {req.screenshotURLs && req.screenshotURLs.length > 0 ? (
+          <>
+            <Image
+              src={req.screenshotURLs[0]}
+              alt=""
+              fill
+              className="object-cover"
+              sizes="60px"
+            />
+            {req.screenshotURLs.length > 1 && (
+              <span className="absolute bottom-0 right-0 bg-black/60 text-white text-[9px] font-semibold px-1 py-0.5 leading-tight rounded-tl">
+                +{req.screenshotURLs.length - 1}
+              </span>
+            )}
+          </>
+        ) : (
+          <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+            <svg className="w-5 h-5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 18h16.5M3.75 6.75h16.5A2.25 2.25 0 0122.5 9v9a2.25 2.25 0 01-2.25 2.25H3.75A2.25 2.25 0 011.5 18V9a2.25 2.25 0 012.25-2.25z" />
+            </svg>
+          </div>
+        )}
+      </div>
+
+      {/* Title + meta */}
       <div className="flex-1 min-w-0">
         <h3 className="font-medium text-gray-900 truncate group-hover:text-ink transition-colors">
           {req.title}
         </h3>
-        <div className="flex items-center gap-3 mt-0.5">
+        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
           <span className="text-xs text-gray-400">
             {req.createdAt?.toDate().toLocaleDateString("en-US", {
               month: "short",
@@ -171,7 +200,8 @@ function RequestRow({ req }: { req: CopyRequest }) {
           )}
         </div>
       </div>
-      <span className={`ml-4 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${cfg.classes}`}>
+
+      <span className={`ml-2 shrink-0 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${cfg.classes}`}>
         {cfg.label}
       </span>
     </Link>
