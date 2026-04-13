@@ -168,7 +168,7 @@ export default function DashboardPage() {
           <div className="space-y-2">
             {requests.map((req) => {
               const cfg = STATUS_CONFIG[req.status] ?? STATUS_CONFIG.draft;
-              const canDelete = req.status === "draft" || req.status === "changes_requested" || req.status === "submitted";
+              const canDelete = req.status === "draft" || req.status === "changes_requested";
               return (
                 <div key={req.id} className="flex items-stretch gap-2">
                   <Link
