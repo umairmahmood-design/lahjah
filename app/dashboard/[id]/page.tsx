@@ -528,9 +528,9 @@ export default function RequestDetailPage() {
                     </div>
                   )}
 
-                  {/* Per-string comment field */}
+                  {/* Per-string comment field + designer reply (active review) */}
                   {!isResolved && (
-                    <div className="px-4 pb-4 pt-2">
+                    <div className="px-4 pb-4 pt-2 space-y-2">
                       <textarea
                         value={rev.comment}
                         onChange={(e) =>
@@ -543,6 +543,12 @@ export default function RequestDetailPage() {
                         placeholder="Leave a comment for this string (optional)…"
                         className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition resize-none text-gray-700 placeholder-gray-300"
                       />
+                      {existingStringReviews.find((r) => r.annotationId === ann.id)?.designerReply && (
+                        <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
+                          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Designer reply</p>
+                          <p className="text-sm text-gray-700">{existingStringReviews.find((r) => r.annotationId === ann.id)!.designerReply}</p>
+                        </div>
+                      )}
                     </div>
                   )}
 
