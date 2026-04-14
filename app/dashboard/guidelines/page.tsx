@@ -15,6 +15,7 @@ import {
 } from "firebase/storage";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth, db, storage } from "@/lib/firebase";
+import { isCopyTeamUser } from "@/lib/roles";
 import DashboardNav from "@/components/DashboardNav";
 
 interface Guidelines {
@@ -46,12 +47,7 @@ export default function GuidelinesPage() {
         return;
       }
 
-      // Check admin status: settings/admins.uids[]
-      // If the document doesn't exist yet, treat current user as admin (bootstrap)
-      const adminsSnap = await getDoc(doc(db, "settings", "admins"));
-      const isAdmin =
-        !adminsSnap.exists() ||
-        (adminsSnap.data()?.uids as string[])?.includes(user.uid);
+      const isAdmin = await isCopyTeamUser(user.uid);
 
       if (!isAdmin) {
         setPageState("access-denied");

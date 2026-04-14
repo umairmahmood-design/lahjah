@@ -9,11 +9,10 @@ import {
   where,
   onSnapshot,
   Timestamp,
-  doc,
-  getDoc,
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
+import { isCopyTeamUser } from "@/lib/roles";
 import DashboardNav from "@/components/DashboardNav";
 import { STATUS_CONFIG, type RequestStatus } from "@/lib/status";
 import { useRouter } from "next/navigation";
@@ -39,11 +38,7 @@ export default function ReviewQueuePage() {
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) { router.replace("/login"); return; }
 
-      const adminsSnap = await getDoc(doc(db, "settings", "admins"));
-      const adminUids = adminsSnap.exists()
-        ? (adminsSnap.data()?.uids as string[]) ?? []
-        : null;
-      const admin = adminUids === null || adminUids.includes(user.uid);
+      const admin = await isCopyTeamUser(user.uid);
       setIsAdmin(admin);
 
       if (!admin) { setLoading(false); return; }

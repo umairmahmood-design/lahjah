@@ -5,8 +5,8 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
+import { isCopyTeamUser } from "@/lib/roles";
 import NotificationBell from "@/components/NotificationBell";
 
 export default function DashboardNav() {
@@ -18,12 +18,7 @@ export default function DashboardNav() {
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) return;
       setUid(user.uid);
-      const adminsSnap = await getDoc(doc(db, "settings", "admins"));
-      // No admins doc = bootstrap mode, treat as admin
-      const adminUids = adminsSnap.exists()
-        ? (adminsSnap.data()?.uids as string[]) ?? []
-        : null;
-      setIsAdmin(adminUids === null || adminUids.includes(user.uid));
+      setIsAdmin(await isCopyTeamUser(user.uid));
     });
     return unsub;
   }, []);

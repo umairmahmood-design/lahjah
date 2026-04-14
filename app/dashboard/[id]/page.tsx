@@ -12,6 +12,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
+import { isCopyTeamUser } from "@/lib/roles";
 import DashboardNav from "@/components/DashboardNav";
 import { STATUS_CONFIG, type RequestStatus } from "@/lib/status";
 import { createNotification } from "@/lib/notifications";
@@ -77,11 +78,7 @@ export default function RequestDetailPage() {
       const user = auth.currentUser;
       if (!user) { router.replace("/login"); return; }
 
-      const adminsSnap = await getDoc(doc(db, "settings", "admins"));
-      const adminUids = adminsSnap.exists()
-        ? (adminsSnap.data()?.uids as string[]) ?? []
-        : null;
-      const copyTeam = adminUids === null || adminUids.includes(user.uid);
+      const copyTeam = await isCopyTeamUser(user.uid);
       setIsCopyTeam(copyTeam);
 
       try {

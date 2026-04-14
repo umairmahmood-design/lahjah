@@ -6,6 +6,7 @@ import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import DashboardNav from "@/components/DashboardNav";
 import { createNotification } from "@/lib/notifications";
+import { getCopyTeamUids } from "@/lib/roles";
 import { type RequestStatus } from "@/lib/status";
 
 type AnnotationType = "CTA" | "Heading" | "Error Message" | "Tooltip" | "Body Copy";
@@ -208,11 +209,8 @@ export default function GeneratePage() {
         submittedAt: serverTimestamp(),
       });
 
-      // Notify all Copy Team admins
-      const adminsSnap = await getDoc(doc(db, "settings", "admins"));
-      const adminUids: string[] = adminsSnap.exists()
-        ? (adminsSnap.data()?.uids as string[]) ?? []
-        : [];
+      // Notify all Copy Team members
+      const adminUids = await getCopyTeamUids();
 
       const message = isResubmit
         ? `"${title}" has been revised and resubmitted for review`

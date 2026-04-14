@@ -10,11 +10,12 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { collection, addDoc, serverTimestamp, getDoc, doc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { auth, db, storage } from "@/lib/firebase";
 import DashboardNav from "@/components/DashboardNav";
 import { createNotification } from "@/lib/notifications";
+import { getCopyTeamUids } from "@/lib/roles";
 
 // ── Types ────────────────────────────────────────────────────────────────
 type Tone = "Friendly" | "Professional" | "Playful" | "Urgent" | "Formal";
@@ -406,11 +407,8 @@ export default function NewRequestPage() {
       });
 
       if (status === "submitted") {
-        // Notify Copy Team admins
-        const adminsSnap = await getDoc(doc(db, "settings", "admins"));
-        const adminUids: string[] = adminsSnap.exists()
-          ? (adminsSnap.data()?.uids as string[]) ?? []
-          : [];
+        // Notify Copy Team members
+        const adminUids = await getCopyTeamUids();
         await Promise.all(
           adminUids
             .filter((adminUid) => adminUid !== uid)

@@ -8,6 +8,7 @@ import {
   createUserWithEmailAndPassword,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { ensureUserDoc } from "@/lib/roles";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,11 +24,13 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      let cred;
       if (mode === "signin") {
-        await signInWithEmailAndPassword(auth, email, password);
+        cred = await signInWithEmailAndPassword(auth, email, password);
       } else {
-        await createUserWithEmailAndPassword(auth, email, password);
+        cred = await createUserWithEmailAndPassword(auth, email, password);
       }
+      await ensureUserDoc(cred.user.uid);
       router.push("/dashboard");
     } catch (err: unknown) {
       const msg =
