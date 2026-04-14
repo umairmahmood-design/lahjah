@@ -620,7 +620,9 @@ export default function RequestDetailPage() {
             }`}>
               {request.status === "approved"
                 ? "This request has been approved."
-                : "Changes have been requested."}
+                : request.status === "changes_requested"
+                ? "Review submitted — waiting for the designer to revise and resubmit."
+                : "This request has been closed."}
             </p>
           </div>
         )}

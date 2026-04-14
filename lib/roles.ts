@@ -60,12 +60,16 @@ export async function ensureUserDoc(uid: string): Promise<UserRole> {
 
 /**
  * Returns the role stored in users/{uid}.
- * Falls back to "designer" if no document exists.
+ * If no document exists, lazily creates one via ensureUserDoc (which checks
+ * the legacy settings/admins list so existing Copy Team members keep access).
  */
 export async function getUserRole(uid: string): Promise<UserRole> {
   const snap = await getDoc(doc(db, "users", uid));
-  if (!snap.exists()) return "designer";
-  return (snap.data().role as UserRole) ?? "designer";
+  if (snap.exists()) {
+    return (snap.data().role as UserRole) ?? "designer";
+  }
+  // No doc yet — create it now (checks legacy settings/admins)
+  return ensureUserDoc(uid);
 }
 
 /** Returns true when the user has the copy_team role. */
