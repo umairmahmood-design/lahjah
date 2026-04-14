@@ -104,7 +104,8 @@ export default function RequestDetailPage() {
         const initialReplies: Record<string, string> = {};
         for (const ann of annotations) {
           const prev = existing.find((r) => r.annotationId === ann.id);
-          initial[ann.id] = { approved: prev?.approved ?? false, comment: prev?.comment ?? "" };
+          // Start fresh for each review round — previous round comment is shown as read-only context
+          initial[ann.id] = { approved: false, comment: "" };
           initialReplies[ann.id] = prev?.designerReply ?? "";
         }
         setStringReviews(initial);
@@ -531,6 +532,27 @@ export default function RequestDetailPage() {
                   {/* Per-string comment field + designer reply (active review) */}
                   {!isResolved && (
                     <div className="px-4 pb-4 pt-2 space-y-2">
+                      {/* Previous round context: reviewer comment + designer reply */}
+                      {(() => {
+                        const prevReview = existingStringReviews.find((r) => r.annotationId === ann.id);
+                        if (!prevReview?.comment && !prevReview?.designerReply) return null;
+                        return (
+                          <>
+                            {prevReview.comment && (
+                              <div className="bg-[#FFEA00]/20 border border-[#FFEA00] rounded-xl px-4 py-3">
+                                <p className="text-[10px] font-semibold text-ink uppercase tracking-wide mb-1">Previous comment</p>
+                                <p className="text-sm text-ink">{prevReview.comment}</p>
+                              </div>
+                            )}
+                            {prevReview.designerReply && (
+                              <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
+                                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Designer reply</p>
+                                <p className="text-sm text-gray-700">{prevReview.designerReply}</p>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                       <textarea
                         value={rev.comment}
                         onChange={(e) =>
@@ -540,15 +562,9 @@ export default function RequestDetailPage() {
                           }))
                         }
                         rows={2}
-                        placeholder="Leave a comment for this string (optional)…"
+                        placeholder="Leave a comment for this string (optional)..."
                         className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition resize-none text-gray-700 placeholder-gray-300"
                       />
-                      {existingStringReviews.find((r) => r.annotationId === ann.id)?.designerReply && (
-                        <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
-                          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Designer reply</p>
-                          <p className="text-sm text-gray-700">{existingStringReviews.find((r) => r.annotationId === ann.id)!.designerReply}</p>
-                        </div>
-                      )}
                     </div>
                   )}
 
