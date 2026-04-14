@@ -29,6 +29,7 @@ interface StringReview {
   approved: boolean;
   comment: string;
   designerReply?: string;
+  copyTeamReply?: string;
 }
 
 interface CopyRequest {
@@ -73,6 +74,10 @@ export default function RequestDetailPage() {
   const [designerReplies, setDesignerReplies] = useState<Record<string, string>>({});
   const [savingReply, setSavingReply] = useState<string | null>(null);
 
+  // Per-string Copy Team reply state
+  const [copyTeamReplies, setCopyTeamReplies] = useState<Record<string, string>>({});
+  const [savingCopyTeamReply, setSavingCopyTeamReply] = useState<string | null>(null);
+
   useEffect(() => {
     async function load() {
       const user = auth.currentUser;
@@ -99,14 +104,17 @@ export default function RequestDetailPage() {
         const existing = (data.stringReviews ?? []) as StringReview[];
         const initial: Record<string, { approved: boolean; comment: string }> = {};
         const initialReplies: Record<string, string> = {};
+        const initialCopyTeamReplies: Record<string, string> = {};
         for (const ann of annotations) {
           const prev = existing.find((r) => r.annotationId === ann.id);
           // Start fresh for each review round — previous round comment is shown as read-only context
           initial[ann.id] = { approved: false, comment: "" };
           initialReplies[ann.id] = prev?.designerReply ?? "";
+          initialCopyTeamReplies[ann.id] = prev?.copyTeamReply ?? "";
         }
         setStringReviews(initial);
         setDesignerReplies(initialReplies);
+        setCopyTeamReplies(initialCopyTeamReplies);
       } catch {
         setError("Failed to load request.");
       } finally {
@@ -121,11 +129,17 @@ export default function RequestDetailPage() {
     setActing(true);
     setError("");
     try {
-      const reviews: StringReview[] = Object.entries(stringReviews).map(([annotationId, v]) => ({
-        annotationId,
-        approved: v.approved,
-        comment: v.comment.trim(),
-      }));
+      const reviews: StringReview[] = Object.entries(stringReviews).map(([annotationId, v]) => {
+        const prev = existingStringReviews.find((r) => r.annotationId === annotationId);
+        return {
+          annotationId,
+          approved: v.approved,
+          comment: v.comment.trim(),
+          // Preserve replies from the previous round so they aren't lost on submit
+          ...(prev?.designerReply ? { designerReply: prev.designerReply } : {}),
+          ...(copyTeamReplies[annotationId]?.trim() ? { copyTeamReply: copyTeamReplies[annotationId].trim() } : {}),
+        };
+      });
 
       const allApproved = reviews.every((r) => r.approved);
       const newStatus: RequestStatus = allApproved ? "approved" : "changes_requested";
@@ -178,6 +192,24 @@ export default function RequestDetailPage() {
       setError("Failed to save reply. Please try again.");
     } finally {
       setSavingReply(null);
+    }
+  }
+
+  async function handleSaveCopyTeamReply(annotationId: string) {
+    if (!request) return;
+    setSavingCopyTeamReply(annotationId);
+    try {
+      const updated = (request.stringReviews ?? []).map((r) =>
+        r.annotationId === annotationId
+          ? { ...r, copyTeamReply: copyTeamReplies[annotationId]?.trim() ?? "" }
+          : r
+      );
+      await updateDoc(doc(db, "copyRequests", id), { stringReviews: updated });
+      setRequest((prev) => prev ? { ...prev, stringReviews: updated } : prev);
+    } catch {
+      setError("Failed to save reply. Please try again.");
+    } finally {
+      setSavingCopyTeamReply(null);
     }
   }
 
@@ -382,6 +414,13 @@ export default function RequestDetailPage() {
                             {savingReply === ann.id ? "Saving…" : "Send"}
                           </button>
                         </div>
+                        {/* Copy Team's response to designer reply (read-only) */}
+                        {review!.copyTeamReply && (
+                          <div className="bg-[#F4F5F6] border border-gray-200 rounded-xl px-4 py-3">
+                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Copy Team response</p>
+                            <p className="text-sm text-gray-700">{review!.copyTeamReply}</p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -542,10 +581,30 @@ export default function RequestDetailPage() {
                               </div>
                             )}
                             {prevReview.designerReply && (
-                              <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
-                                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Designer reply</p>
-                                <p className="text-sm text-gray-700">{prevReview.designerReply}</p>
-                              </div>
+                              <>
+                                <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
+                                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Designer reply</p>
+                                  <p className="text-sm text-gray-700">{prevReview.designerReply}</p>
+                                </div>
+                                <div className="flex gap-2">
+                                  <textarea
+                                    value={copyTeamReplies[ann.id] ?? ""}
+                                    onChange={(e) =>
+                                      setCopyTeamReplies((prev) => ({ ...prev, [ann.id]: e.target.value }))
+                                    }
+                                    rows={2}
+                                    placeholder="Respond to designer..."
+                                    className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition resize-none text-gray-700 placeholder-gray-300"
+                                  />
+                                  <button
+                                    onClick={() => handleSaveCopyTeamReply(ann.id)}
+                                    disabled={savingCopyTeamReply === ann.id}
+                                    className="self-end px-3 py-2 rounded-lg bg-brand text-ink text-xs font-semibold hover:bg-brand-dark transition-colors disabled:opacity-50 shrink-0"
+                                  >
+                                    {savingCopyTeamReply === ann.id ? "Saving…" : "Send"}
+                                  </button>
+                                </div>
+                              </>
                             )}
                           </>
                         );
@@ -577,10 +636,30 @@ export default function RequestDetailPage() {
                           </div>
                         )}
                         {savedReview?.designerReply && (
-                          <div className="mx-4 mb-4 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
-                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Designer reply</p>
-                            <p className="text-sm text-gray-700">{savedReview.designerReply}</p>
-                          </div>
+                          <>
+                            <div className={`mx-4 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 ${savedReview.copyTeamReply ? "mb-2" : "mb-2"}`}>
+                              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Designer reply</p>
+                              <p className="text-sm text-gray-700">{savedReview.designerReply}</p>
+                            </div>
+                            <div className="mx-4 mb-4 flex gap-2">
+                              <textarea
+                                value={copyTeamReplies[ann.id] ?? ""}
+                                onChange={(e) =>
+                                  setCopyTeamReplies((prev) => ({ ...prev, [ann.id]: e.target.value }))
+                                }
+                                rows={2}
+                                placeholder="Respond to designer..."
+                                className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition resize-none text-gray-700 placeholder-gray-300"
+                              />
+                              <button
+                                onClick={() => handleSaveCopyTeamReply(ann.id)}
+                                disabled={savingCopyTeamReply === ann.id}
+                                className="self-end px-3 py-2 rounded-lg bg-brand text-ink text-xs font-semibold hover:bg-brand-dark transition-colors disabled:opacity-50 shrink-0"
+                              >
+                                {savingCopyTeamReply === ann.id ? "Saving…" : "Send"}
+                              </button>
+                            </div>
+                          </>
                         )}
                       </>
                     );
