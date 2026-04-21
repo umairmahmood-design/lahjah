@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback, useRef, useState } from "react";
 import Image from "next/image";
+import Tesseract from "tesseract.js";
 import { useParams, useRouter } from "next/navigation";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -71,6 +72,8 @@ export default function AnnotatePage() {
   const [newCharacterLimit, setNewCharacterLimit] = useState<CharacterLimit>("no_limit");
   const [newTask, setNewTask] = useState<AnnotationTask>("revise_and_translate");
   const labelInputRef = useRef<HTMLInputElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [ocrLoading, setOcrLoading] = useState(false);
 
   // Selection
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -97,17 +100,56 @@ export default function AnnotatePage() {
     load();
   }, [id]);
 
-  // Focus label input when popup opens
+  // Focus label input when popup opens + run OCR on drawn region
   useEffect(() => {
-    if (pendingRect) {
-      setNewLabel("");
-      setNewType("CTA");
-      setNewNote("");
-      setNewExistingCopy("");
-      setNewCharacterLimit("no_limit");
-      setNewTask("revise_and_translate");
-      setTimeout(() => labelInputRef.current?.focus(), 50);
-    }
+    if (!pendingRect) return;
+
+    setNewLabel("");
+    setNewType("CTA");
+    setNewNote("");
+    setNewExistingCopy("");
+    setNewCharacterLimit("no_limit");
+    setNewTask("revise_and_translate");
+    setTimeout(() => labelInputRef.current?.focus(), 50);
+
+    const img = imgRef.current;
+    if (!img) return;
+
+    let cancelled = false;
+    setOcrLoading(true);
+
+    (async () => {
+      try {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        const nw = img.naturalWidth;
+        const nh = img.naturalHeight;
+        const cropX = Math.round(pendingRect.x * nw);
+        const cropY = Math.round(pendingRect.y * nh);
+        const cropW = Math.round(pendingRect.width * nw);
+        const cropH = Math.round(pendingRect.height * nh);
+
+        canvas.width = cropW;
+        canvas.height = cropH;
+        ctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+
+        const { data } = await Tesseract.recognize(canvas, "eng+ara");
+        if (!cancelled) {
+          setNewExistingCopy(data.text.trim());
+        }
+      } catch {
+        // OCR failed — leave field empty for manual input
+      } finally {
+        if (!cancelled) setOcrLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      setOcrLoading(false);
+    };
   }, [pendingRect]);
 
   // Delete selected annotation with keyboard
@@ -348,8 +390,10 @@ export default function AnnotatePage() {
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
+                ref={imgRef}
                 src={currentUrl}
                 alt={`Screenshot ${activeIdx + 1}`}
+                crossOrigin="anonymous"
                 draggable={false}
                 className="block rounded-lg select-none"
                 style={{
@@ -537,14 +581,23 @@ export default function AnnotatePage() {
             {/* Existing copy */}
             <div className="mb-3">
               <label className="block text-xs text-gray-400 mb-1.5">Existing copy</label>
-              <input
-                type="text"
-                value={newExistingCopy}
-                onChange={(e) => setNewExistingCopy(e.target.value)}
-                placeholder='e.g. "Continue" or "Going the distance, just for you"'
-                className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand/60 transition"
-              />
-              <p className="text-[11px] text-gray-600 mt-1">The current text on this UI element, if any</p>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={newExistingCopy}
+                  onChange={(e) => setNewExistingCopy(e.target.value)}
+                  disabled={ocrLoading}
+                  placeholder={ocrLoading ? "" : 'e.g. "Continue" or "Going the distance, just for you"'}
+                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand/60 transition disabled:opacity-60"
+                />
+                {ocrLoading && (
+                  <div className="absolute inset-0 flex items-center gap-2 px-3 rounded-lg pointer-events-none">
+                    <div className="w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin shrink-0" />
+                    <span className="text-xs text-gray-500">Reading text…</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-[11px] text-gray-600 mt-1">Auto-filled via OCR · edit if needed</p>
             </div>
 
             {/* Note */}
