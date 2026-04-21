@@ -581,7 +581,7 @@ export default function NewRequestPage() {
     <div className="min-h-screen bg-gray-50">
       <DashboardNav />
 
-      <main className="px-4 sm:px-6 lg:px-8 py-6">
+      <main className="px-4 sm:px-6 lg:px-8 py-6 pb-28">
 
         {/* Header — full width */}
         <div className="mb-6">
@@ -830,41 +830,6 @@ export default function NewRequestPage() {
               </div>
             </div>
 
-            {/* Error */}
-            {error && (
-              <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl border border-red-100">
-                {error}
-              </p>
-            )}
-
-            {/* Upload in-progress notice */}
-            {uploadsInProgress && (
-              <p className="text-xs text-gray-400 flex items-center gap-2 px-1">
-                <span className="w-3 h-3 border-2 border-brand border-t-transparent rounded-full animate-spin inline-block" />
-                Uploading images…
-              </p>
-            )}
-
-            {/* Actions */}
-            <div className="flex gap-3 pb-2 lg:pb-0">
-              <button
-                type="button"
-                onClick={() => save("draft")}
-                disabled={saving || uploadsInProgress}
-                className="flex-1 py-3 rounded-xl bg-[#F4F5F6] text-ink font-semibold text-sm hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {saving ? "Saving…" : "Save as draft"}
-              </button>
-              <button
-                type="button"
-                onClick={() => save("submitted")}
-                disabled={saving || uploadsInProgress || !allDone}
-                title={!allDone ? "Generate and select copy for all annotations first" : undefined}
-                className="flex-1 py-3 rounded-xl bg-brand text-ink font-semibold text-sm hover:bg-brand-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
-              >
-                {saving ? "Saving…" : "Save & Submit for review"}
-              </button>
-            </div>
           </div>
 
           {/* ── RIGHT COLUMN (~60%) — screenshots + annotation ── */}
@@ -1347,6 +1312,45 @@ export default function NewRequestPage() {
         )}
 
       </main>
+
+      {/* ── Sticky action bar ── */}
+      <div className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
+        <div className="px-4 sm:px-6 lg:px-8 py-3 max-w-screen-2xl mx-auto">
+          {/* Error */}
+          {error && (
+            <p className="text-xs text-red-600 mb-2 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+              {error}
+            </p>
+          )}
+          {/* Upload notice */}
+          {uploadsInProgress && (
+            <p className="text-xs text-gray-400 flex items-center gap-1.5 mb-2">
+              <span className="w-3 h-3 border-2 border-brand border-t-transparent rounded-full animate-spin shrink-0" />
+              Uploading images…
+            </p>
+          )}
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => save("draft")}
+              disabled={saving || uploadsInProgress}
+              className="flex-1 py-2.5 rounded-xl bg-[#F4F5F6] text-ink font-semibold text-sm hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {saving ? "Saving…" : "Save as draft"}
+            </button>
+            <button
+              type="button"
+              onClick={() => save("submitted")}
+              disabled={saving || uploadsInProgress || !allDone}
+              title={!allDone ? "Generate and select copy for all annotations first" : undefined}
+              className="flex-1 py-2.5 rounded-xl bg-brand text-ink font-semibold text-sm hover:bg-brand-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+            >
+              {saving ? "Saving…" : "Save & Submit for review"}
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* ── New annotation popup ── */}
       {pendingRect && (
