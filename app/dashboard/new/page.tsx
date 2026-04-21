@@ -1283,35 +1283,33 @@ export default function NewRequestPage() {
       </main>
 
       {/* ── Generate copy floating card (above sticky bar) ── */}
-      <div className="fixed bottom-[72px] inset-x-0 z-40 px-4 sm:px-6 lg:px-8 pointer-events-none">
-        <div className="max-w-screen-2xl mx-auto flex justify-end">
-          <div className="pointer-events-auto bg-white rounded-2xl border border-gray-200 shadow-lg px-5 py-3.5 flex items-center gap-6 w-full sm:w-auto sm:min-w-[420px]">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-800 leading-tight">Generate copy</p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                {annotations.length === 0
-                  ? "Add at least one annotation above to enable generation"
-                  : generating
-                  ? `Generating for ${loadingCount > 0 ? loadingCount : annotations.length} annotation${annotations.length !== 1 ? "s" : ""}…`
-                  : generated
-                  ? `${doneCount} of ${annotations.length} done · click to regenerate`
-                  : `${annotations.length} annotation${annotations.length !== 1 ? "s" : ""} ready`}
-              </p>
-            </div>
-            <button
-              onClick={handleGenerate}
-              disabled={annotations.length === 0 || uploadsInProgress || generating}
-              className="shrink-0 px-5 py-2 rounded-xl bg-ink text-white text-sm font-semibold hover:bg-ink/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {generating ? "Generating…" : generated ? "Regenerate all" : "Generate copy"}
-            </button>
+      <div className="fixed bottom-[64px] inset-x-0 z-40 px-4 sm:px-6 lg:px-8">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-lg px-5 py-3.5 flex items-center gap-6">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gray-800 leading-tight">Generate copy</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {annotations.length === 0
+                ? "Add at least one annotation above to enable generation"
+                : generating
+                ? `Generating for ${loadingCount > 0 ? loadingCount : annotations.length} annotation${annotations.length !== 1 ? "s" : ""}…`
+                : generated
+                ? `${doneCount} of ${annotations.length} done · click to regenerate`
+                : `${annotations.length} annotation${annotations.length !== 1 ? "s" : ""} ready`}
+            </p>
           </div>
+          <button
+            onClick={handleGenerate}
+            disabled={annotations.length === 0 || uploadsInProgress || generating}
+            className="shrink-0 px-5 py-2 rounded-xl bg-ink text-white text-sm font-semibold hover:bg-ink/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {generating ? "Generating…" : generated ? "Regenerate all" : "Generate copy"}
+          </button>
         </div>
       </div>
 
       {/* ── Sticky CTA bar ── */}
       <div className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200 shadow-[0_-2px_8px_rgba(0,0,0,0.06)]">
-        <div className="px-4 sm:px-6 lg:px-8 py-3 max-w-screen-2xl mx-auto">
+        <div className="px-4 sm:px-6 lg:px-8 py-3">
           {/* Error */}
           {error && (
             <p className="text-xs text-red-600 mb-2 flex items-center gap-1.5">
