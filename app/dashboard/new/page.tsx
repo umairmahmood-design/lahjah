@@ -38,7 +38,6 @@ interface Annotation {
   screenshotUrl: string;
   label: string;
   type: AnnotationType;
-  note: string;
   existingCopy: string;
   characterLimit: CharacterLimit;
   task: AnnotationTask;
@@ -124,7 +123,6 @@ export default function NewRequestPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [newLabel, setNewLabel] = useState("");
   const [newType, setNewType] = useState<AnnotationType>("CTA");
-  const [newNote, setNewNote] = useState("");
   const [newExistingCopy, setNewExistingCopy] = useState("");
   const [newCharacterLimit, setNewCharacterLimit] = useState<CharacterLimit>("no_limit");
   const [newTask, setNewTask] = useState<AnnotationTask>("revise_and_translate");
@@ -341,7 +339,6 @@ export default function NewRequestPage() {
 
     setNewLabel("");
     setNewType("CTA");
-    setNewNote("");
     setNewExistingCopy("");
     setNewCharacterLimit("no_limit");
     setNewTask("revise_and_translate");
@@ -441,7 +438,6 @@ export default function NewRequestPage() {
       screenshotUrl: currentUrl,
       label: newLabel.trim(),
       type: newType,
-      note: newNote.trim(),
       existingCopy: newExistingCopy.trim(),
       characterLimit: newCharacterLimit,
       task: newTask,
@@ -457,9 +453,7 @@ export default function NewRequestPage() {
   async function generateOne(ann: Annotation) {
     setResults((prev) => ({ ...prev, [ann.id]: { status: "loading", en: [], ar: [] } }));
     setSelections((prev) => ({ ...prev, [ann.id]: { enIdx: 0, arIdx: 0 } }));
-    const description = [ann.label, `(${ann.type})`, ann.note ? `— ${ann.note}` : ""]
-      .filter(Boolean)
-      .join(" ");
+    const description = `${ann.label} (${ann.type})`;
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
@@ -1107,9 +1101,6 @@ export default function NewRequestPage() {
                                 <span className="italic">&ldquo;{ann.existingCopy}&rdquo;</span>
                               </p>
                             )}
-                            {ann.note && (
-                              <p className="text-xs text-gray-400">{ann.note}</p>
-                            )}
                           </div>
                         </div>
                       ))}
@@ -1157,21 +1148,13 @@ export default function NewRequestPage() {
                         </button>
                       </div>
 
-                      {/* Existing copy + note context */}
-                      {(ann.existingCopy || ann.note) && (
-                        <div className="px-5 py-2.5 bg-gray-50 border-b border-gray-100 space-y-1">
-                          {ann.existingCopy && (
-                            <p className="text-xs text-gray-500">
-                              <span className="font-medium text-gray-400">Current text: </span>
-                              <span className="italic">&ldquo;{ann.existingCopy}&rdquo;</span>
-                            </p>
-                          )}
-                          {ann.note && (
-                            <p className="text-xs text-gray-500">
-                              <span className="font-medium text-gray-400">Note: </span>
-                              {ann.note}
-                            </p>
-                          )}
+                      {/* Existing copy context */}
+                      {ann.existingCopy && (
+                        <div className="px-5 py-2.5 bg-gray-50 border-b border-gray-100">
+                          <p className="text-xs text-gray-500">
+                            <span className="font-medium text-gray-400">Current text: </span>
+                            <span className="italic">&ldquo;{ann.existingCopy}&rdquo;</span>
+                          </p>
                         </div>
                       )}
 
@@ -1399,17 +1382,6 @@ export default function NewRequestPage() {
                 )}
               </div>
               <p className="text-[11px] text-gray-400 mt-1">Auto-filled via OCR · edit if needed</p>
-            </div>
-
-            <div className="mb-3">
-              <label className="block text-xs text-gray-500 mb-1.5">Note</label>
-              <textarea
-                value={newNote}
-                onChange={(e) => setNewNote(e.target.value)}
-                placeholder="e.g. Make the tone warmer"
-                rows={2}
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition resize-none"
-              />
             </div>
 
             <div className="mb-3">

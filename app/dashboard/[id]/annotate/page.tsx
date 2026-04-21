@@ -16,7 +16,6 @@ interface Annotation {
   screenshotUrl: string;
   label: string;
   type: AnnotationType;
-  note: string;
   existingCopy: string;
   characterLimit: CharacterLimit;
   task: AnnotationTask;
@@ -67,7 +66,6 @@ export default function AnnotatePage() {
   // New annotation popup
   const [newLabel, setNewLabel] = useState("");
   const [newType, setNewType] = useState<AnnotationType>("CTA");
-  const [newNote, setNewNote] = useState("");
   const [newExistingCopy, setNewExistingCopy] = useState("");
   const [newCharacterLimit, setNewCharacterLimit] = useState<CharacterLimit>("no_limit");
   const [newTask, setNewTask] = useState<AnnotationTask>("revise_and_translate");
@@ -119,7 +117,6 @@ export default function AnnotatePage() {
 
     setNewLabel("");
     setNewType("CTA");
-    setNewNote("");
     setNewExistingCopy("");
     setNewCharacterLimit("no_limit");
     setNewTask("revise_and_translate");
@@ -258,7 +255,6 @@ export default function AnnotatePage() {
         screenshotUrl: screenshotURLs[activeIdx],
         label: newLabel.trim(),
         type: newType,
-        note: newNote.trim(),
         existingCopy: newExistingCopy.trim(),
         characterLimit: newCharacterLimit,
         task: newTask,
@@ -566,9 +562,6 @@ export default function AnnotatePage() {
                     {ann.existingCopy && (
                       <p className="text-[11px] text-gray-600 mt-0.5 ml-4 line-clamp-1 italic">&ldquo;{ann.existingCopy}&rdquo;</p>
                     )}
-                    {ann.note && (
-                      <p className="text-[11px] text-gray-600 mt-0.5 ml-4 line-clamp-2">{ann.note}</p>
-                    )}
                   </li>
                 ))}
               </ul>
@@ -637,17 +630,7 @@ export default function AnnotatePage() {
               <p className="text-[11px] text-gray-600 mt-1">Auto-filled via OCR · edit if needed</p>
             </div>
 
-            {/* Note */}
-            <div className="mb-3">
-              <label className="block text-xs text-gray-400 mb-1.5">Note</label>
-              <textarea
-                value={newNote}
-                onChange={(e) => setNewNote(e.target.value)}
-                placeholder="e.g. Make the tone warmer"
-                rows={2}
-                className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand/60 transition resize-none"
-              />
-            </div>
+
 
             {/* Character limit */}
             <div className="mb-3">

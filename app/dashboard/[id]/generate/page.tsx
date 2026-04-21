@@ -18,7 +18,6 @@ interface Annotation {
   screenshotUrl: string;
   label: string;
   type: AnnotationType;
-  note: string;
   existingCopy: string;
   characterLimit?: CharacterLimit;
   task?: AnnotationTask;
@@ -124,9 +123,7 @@ export default function GeneratePage() {
     // Reset selection for this annotation
     setSelections((prev) => ({ ...prev, [ann.id]: { enIdx: 0, arIdx: 0 } }));
 
-    const description = [ann.label, `(${ann.type})`, ann.note ? `— ${ann.note}` : ""]
-      .filter(Boolean)
-      .join(" ");
+    const description = `${ann.label} (${ann.type})`;
 
     try {
       const res = await fetch("/api/generate", {
@@ -360,21 +357,13 @@ export default function GeneratePage() {
                   </button>
                 </div>
 
-                {/* Existing copy + note */}
-                {(ann.existingCopy || ann.note) && (
-                  <div className="px-5 py-2.5 bg-gray-50 border-b border-gray-100 space-y-1">
-                    {ann.existingCopy && (
-                      <p className="text-xs text-gray-500">
-                        <span className="font-medium text-gray-400">Current text: </span>
-                        <span className="italic">&ldquo;{ann.existingCopy}&rdquo;</span>
-                      </p>
-                    )}
-                    {ann.note && (
-                      <p className="text-xs text-gray-500">
-                        <span className="font-medium text-gray-400">Note: </span>
-                        {ann.note}
-                      </p>
-                    )}
+                {/* Existing copy context */}
+                {ann.existingCopy && (
+                  <div className="px-5 py-2.5 bg-gray-50 border-b border-gray-100">
+                    <p className="text-xs text-gray-500">
+                      <span className="font-medium text-gray-400">Current text: </span>
+                      <span className="italic">&ldquo;{ann.existingCopy}&rdquo;</span>
+                    </p>
                   </div>
                 )}
 
