@@ -2,7 +2,7 @@
 
 import { useEffect, useCallback, useRef, useState } from "react";
 import Image from "next/image";
-import { recognizeText } from "@/lib/ocr";
+import { recognizeText, scanScreenshot, findOverlappingText, WordData } from "@/lib/ocr";
 import { useParams, useRouter } from "next/navigation";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -74,6 +74,9 @@ export default function AnnotatePage() {
   const labelInputRef = useRef<HTMLInputElement>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
 
+  // Pre-scan cache: URL → detected words (populated in background after each screenshot loads)
+  const preScanCache = useRef<Map<string, WordData[]>>(new Map());
+
   // Selection
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -99,9 +102,19 @@ export default function AnnotatePage() {
     load();
   }, [id]);
 
+  // Phase 1: kick off full-image pre-scan in the background when the active screenshot changes
+  useEffect(() => {
+    const url = screenshotURLs[activeIdx];
+    if (!url || preScanCache.current.has(url)) return;
+    // Mark as in-progress with an empty array so we don't double-scan
+    preScanCache.current.set(url, []);
+    scanScreenshot(url).then((words) => {
+      preScanCache.current.set(url, words);
+    });
+  }, [screenshotURLs, activeIdx]);
+
   // Focus label input when popup opens + run OCR on drawn region
   useEffect(() => {
-    console.log("[OCR] pendingRect useEffect fired, pendingRect:", pendingRect);
     if (!pendingRect) return;
 
     setNewLabel("");
@@ -113,44 +126,47 @@ export default function AnnotatePage() {
     setTimeout(() => labelInputRef.current?.focus(), 50);
 
     const screenshotUrl = screenshotURLs[activeIdx];
-    if (!screenshotUrl) {
-      console.log("[OCR] No screenshot URL — skipping");
-      return;
-    }
+    if (!screenshotUrl) return;
 
     let cancelled = false;
     setOcrLoading(true);
-    console.log("[OCR] Starting — rect:", pendingRect, "url:", screenshotUrl.slice(0, 80));
 
     (async () => {
       try {
-        // Fetch image as blob to avoid canvas CORS taint from Firebase Storage URLs
-        console.log("[OCR] Fetching image blob via proxy…");
+        // Phase 1: try pre-scanned words first (fast, accurate)
+        const cachedWords = preScanCache.current.get(screenshotUrl);
+        if (cachedWords && cachedWords.length > 0) {
+          const matched = findOverlappingText(cachedWords, pendingRect);
+          if (matched) {
+            console.log("[OCR] Phase 1 hit:", JSON.stringify(matched));
+            if (!cancelled) setNewExistingCopy(matched);
+            return;
+          }
+          console.log("[OCR] Phase 1 no overlap — falling back to per-crop");
+        } else {
+          console.log("[OCR] Phase 1 not ready — falling back to per-crop");
+        }
+
+        // Phase 2: per-crop fallback
         const response = await fetch(`/api/proxy-image?url=${encodeURIComponent(screenshotUrl)}`);
         if (!response.ok) throw new Error(`Fetch ${response.status}: ${response.statusText}`);
         const blob = await response.blob();
         const blobUrl = URL.createObjectURL(blob);
-        console.log("[OCR] Blob ready, loading into offscreen Image…");
 
-        // Load into an offscreen Image (same-origin blob URL — canvas-safe)
-        // `new window.Image()` avoids collision with the next/image import
         const offscreen = await new Promise<HTMLImageElement>((resolve, reject) => {
           const img = new window.Image();
           img.onload = () => resolve(img);
-          img.onerror = () => reject(new Error("Offscreen image load failed"));
+          img.onerror = () => reject(new Error("Image load failed"));
           img.src = blobUrl;
         });
         URL.revokeObjectURL(blobUrl);
 
         const nw = offscreen.naturalWidth;
         const nh = offscreen.naturalHeight;
-        console.log(`[OCR] Image size: ${nw}×${nh}`);
-
         const cropX = Math.round(pendingRect.x * nw);
         const cropY = Math.round(pendingRect.y * nh);
         const cropW = Math.round(pendingRect.width * nw);
         const cropH = Math.round(pendingRect.height * nh);
-        console.log(`[OCR] Crop: x=${cropX} y=${cropY} w=${cropW} h=${cropH}`);
 
         const canvas = document.createElement("canvas");
         canvas.width = cropW;
@@ -159,16 +175,11 @@ export default function AnnotatePage() {
         if (!ctx) throw new Error("Canvas 2D context unavailable");
         ctx.drawImage(offscreen, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
 
-        console.log("[OCR] Canvas drawn — running Tesseract (3× upscale + Otsu threshold)…");
         const text = await recognizeText(canvas);
-        console.log("[OCR] Result:", JSON.stringify(text));
-
-        if (!cancelled) {
-          setNewExistingCopy(text);
-        }
+        console.log("[OCR] Phase 2 result:", JSON.stringify(text));
+        if (!cancelled) setNewExistingCopy(text);
       } catch (err) {
         console.error("[OCR] Failed:", err);
-        // Leave field empty for manual input
       } finally {
         if (!cancelled) setOcrLoading(false);
       }
