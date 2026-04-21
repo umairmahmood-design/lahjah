@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import Tesseract from "tesseract.js";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { auth, db, storage } from "@/lib/firebase";
@@ -127,6 +128,7 @@ export default function NewRequestPage() {
   const [newExistingCopy, setNewExistingCopy] = useState("");
   const [newCharacterLimit, setNewCharacterLimit] = useState<CharacterLimit>("no_limit");
   const [newTask, setNewTask] = useState<AnnotationTask>("revise_and_translate");
+  const [ocrLoading, setOcrLoading] = useState(false);
 
   // Generation state
   const [results, setResults] = useState<Record<string, CopyResult>>({});
@@ -332,17 +334,83 @@ export default function NewRequestPage() {
     if (w > 0.02 && h > 0.02) setPendingRect({ x, y, width: w, height: h });
   }
 
-  // Focus label input when popup opens
+  // Focus label input when popup opens + run OCR on drawn region
   useEffect(() => {
-    if (pendingRect) {
-      setNewLabel("");
-      setNewType("CTA");
-      setNewNote("");
-      setNewExistingCopy("");
-      setNewCharacterLimit("no_limit");
-      setNewTask("revise_and_translate");
-      setTimeout(() => labelInputRef.current?.focus(), 50);
+    console.log("[OCR] pendingRect useEffect fired, pendingRect:", pendingRect);
+    if (!pendingRect) return;
+
+    setNewLabel("");
+    setNewType("CTA");
+    setNewNote("");
+    setNewExistingCopy("");
+    setNewCharacterLimit("no_limit");
+    setNewTask("revise_and_translate");
+    setTimeout(() => labelInputRef.current?.focus(), 50);
+
+    if (!currentUrl) {
+      console.log("[OCR] No screenshot URL — skipping");
+      return;
     }
+
+    let cancelled = false;
+    setOcrLoading(true);
+    console.log("[OCR] Starting — rect:", pendingRect, "url:", currentUrl.slice(0, 80));
+
+    (async () => {
+      try {
+        console.log("[OCR] Fetching image blob…");
+        const response = await fetch(currentUrl);
+        if (!response.ok) throw new Error(`Fetch ${response.status}: ${response.statusText}`);
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        console.log("[OCR] Blob ready, loading into offscreen Image…");
+
+        // `new window.Image()` avoids collision with the next/image import
+        const offscreen = await new Promise<HTMLImageElement>((resolve, reject) => {
+          const img = new window.Image();
+          img.onload = () => resolve(img);
+          img.onerror = () => reject(new Error("Offscreen image load failed"));
+          img.src = blobUrl;
+        });
+        URL.revokeObjectURL(blobUrl);
+
+        const nw = offscreen.naturalWidth;
+        const nh = offscreen.naturalHeight;
+        console.log(`[OCR] Image size: ${nw}×${nh}`);
+
+        const cropX = Math.round(pendingRect.x * nw);
+        const cropY = Math.round(pendingRect.y * nh);
+        const cropW = Math.round(pendingRect.width * nw);
+        const cropH = Math.round(pendingRect.height * nh);
+        console.log(`[OCR] Crop: x=${cropX} y=${cropY} w=${cropW} h=${cropH}`);
+
+        const canvas = document.createElement("canvas");
+        canvas.width = cropW;
+        canvas.height = cropH;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Canvas 2D context unavailable");
+        ctx.drawImage(offscreen, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+
+        console.log("[OCR] Canvas drawn — running Tesseract…");
+        const { data } = await Tesseract.recognize(canvas, "eng+ara");
+        const text = data.text.trim();
+        console.log("[OCR] Result:", JSON.stringify(text));
+
+        if (!cancelled) {
+          setNewExistingCopy(text);
+        }
+      } catch (err) {
+        console.error("[OCR] Failed:", err);
+      } finally {
+        if (!cancelled) setOcrLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      setOcrLoading(false);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingRect]);
 
   // Keyboard: delete selected / escape
@@ -1317,14 +1385,23 @@ export default function NewRequestPage() {
 
             <div className="mb-3">
               <label className="block text-xs text-gray-500 mb-1.5">Existing copy</label>
-              <input
-                type="text"
-                value={newExistingCopy}
-                onChange={(e) => setNewExistingCopy(e.target.value)}
-                placeholder='e.g. "Continue"'
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"
-              />
-              <p className="text-[11px] text-gray-400 mt-1">The current text on this UI element, if any</p>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={newExistingCopy}
+                  onChange={(e) => setNewExistingCopy(e.target.value)}
+                  disabled={ocrLoading}
+                  placeholder={ocrLoading ? "" : 'e.g. "Continue"'}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition disabled:opacity-60"
+                />
+                {ocrLoading && (
+                  <div className="absolute inset-0 flex items-center gap-2 px-3 rounded-lg pointer-events-none">
+                    <div className="w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin shrink-0" />
+                    <span className="text-xs text-gray-400">Reading text…</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1">Auto-filled via OCR · edit if needed</p>
             </div>
 
             <div className="mb-3">

@@ -101,6 +101,7 @@ export default function AnnotatePage() {
 
   // Focus label input when popup opens + run OCR on drawn region
   useEffect(() => {
+    console.log("[OCR] pendingRect useEffect fired, pendingRect:", pendingRect);
     if (!pendingRect) return;
 
     setNewLabel("");
