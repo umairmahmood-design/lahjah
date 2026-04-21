@@ -72,7 +72,6 @@ export default function AnnotatePage() {
   const [newCharacterLimit, setNewCharacterLimit] = useState<CharacterLimit>("no_limit");
   const [newTask, setNewTask] = useState<AnnotationTask>("revise_and_translate");
   const labelInputRef = useRef<HTMLInputElement>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
 
   // Selection
@@ -112,35 +111,64 @@ export default function AnnotatePage() {
     setNewTask("revise_and_translate");
     setTimeout(() => labelInputRef.current?.focus(), 50);
 
-    const img = imgRef.current;
-    if (!img) return;
+    const screenshotUrl = screenshotURLs[activeIdx];
+    if (!screenshotUrl) {
+      console.log("[OCR] No screenshot URL — skipping");
+      return;
+    }
 
     let cancelled = false;
     setOcrLoading(true);
+    console.log("[OCR] Starting — rect:", pendingRect, "url:", screenshotUrl.slice(0, 80));
 
     (async () => {
       try {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
+        // Fetch image as blob to avoid canvas CORS taint from Firebase Storage URLs
+        console.log("[OCR] Fetching image blob…");
+        const response = await fetch(screenshotUrl);
+        if (!response.ok) throw new Error(`Fetch ${response.status}: ${response.statusText}`);
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        console.log("[OCR] Blob ready, loading into offscreen Image…");
 
-        const nw = img.naturalWidth;
-        const nh = img.naturalHeight;
+        // Load into an offscreen Image (same-origin blob URL — canvas-safe)
+        // `new window.Image()` avoids collision with the next/image import
+        const offscreen = await new Promise<HTMLImageElement>((resolve, reject) => {
+          const img = new window.Image();
+          img.onload = () => resolve(img);
+          img.onerror = () => reject(new Error("Offscreen image load failed"));
+          img.src = blobUrl;
+        });
+        URL.revokeObjectURL(blobUrl);
+
+        const nw = offscreen.naturalWidth;
+        const nh = offscreen.naturalHeight;
+        console.log(`[OCR] Image size: ${nw}×${nh}`);
+
         const cropX = Math.round(pendingRect.x * nw);
         const cropY = Math.round(pendingRect.y * nh);
         const cropW = Math.round(pendingRect.width * nw);
         const cropH = Math.round(pendingRect.height * nh);
+        console.log(`[OCR] Crop: x=${cropX} y=${cropY} w=${cropW} h=${cropH}`);
 
+        const canvas = document.createElement("canvas");
         canvas.width = cropW;
         canvas.height = cropH;
-        ctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Canvas 2D context unavailable");
+        ctx.drawImage(offscreen, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
 
+        console.log("[OCR] Canvas drawn — running Tesseract…");
         const { data } = await Tesseract.recognize(canvas, "eng+ara");
+        const text = data.text.trim();
+        console.log("[OCR] Result:", JSON.stringify(text));
+
         if (!cancelled) {
-          setNewExistingCopy(data.text.trim());
+          setNewExistingCopy(text);
         }
-      } catch {
-        // OCR failed — leave field empty for manual input
+      } catch (err) {
+        console.error("[OCR] Failed:", err);
+        // Leave field empty for manual input
       } finally {
         if (!cancelled) setOcrLoading(false);
       }
@@ -150,7 +178,7 @@ export default function AnnotatePage() {
       cancelled = true;
       setOcrLoading(false);
     };
-  }, [pendingRect]);
+  }, [pendingRect, screenshotURLs, activeIdx]);
 
   // Delete selected annotation with keyboard
   const handleKeyDown = useCallback(
@@ -390,10 +418,8 @@ export default function AnnotatePage() {
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                ref={imgRef}
                 src={currentUrl}
                 alt={`Screenshot ${activeIdx + 1}`}
-                crossOrigin="anonymous"
                 draggable={false}
                 className="block rounded-lg select-none"
                 style={{
