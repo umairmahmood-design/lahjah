@@ -10,7 +10,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import Tesseract from "tesseract.js";
+import { recognizeText } from "@/lib/ocr";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { auth, db, storage } from "@/lib/firebase";
@@ -391,9 +391,8 @@ export default function NewRequestPage() {
         if (!ctx) throw new Error("Canvas 2D context unavailable");
         ctx.drawImage(offscreen, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
 
-        console.log("[OCR] Canvas drawn — running Tesseract…");
-        const { data } = await Tesseract.recognize(canvas, "eng+ara");
-        const text = data.text.trim();
+        console.log("[OCR] Canvas drawn — running Tesseract (3× upscale + Otsu threshold)…");
+        const text = await recognizeText(canvas);
         console.log("[OCR] Result:", JSON.stringify(text));
 
         if (!cancelled) {
