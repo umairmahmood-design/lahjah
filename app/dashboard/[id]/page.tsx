@@ -38,6 +38,12 @@ interface CopyRequest {
   status: RequestStatus;
   tone?: string;
   context?: string;
+  domain?: string;
+  targetAudience?: string;
+  publishingDeadline?: string;
+  problemStatement?: string;
+  competitorResearch?: string;
+  competitorScreenshotURLs?: string[];
   createdAt: Timestamp;
   createdBy: string;
   annotations?: Annotation[];
@@ -277,17 +283,82 @@ export default function RequestDetailPage() {
           month: "long", day: "numeric", year: "numeric",
         })}
         {request.tone && ` · ${request.tone}`}
+        {request.domain && ` · ${request.domain}`}
+        {request.targetAudience && ` · ${request.targetAudience}`}
       </p>
     </div>
   );
 
-  const ContextBlock = () =>
-    request.context ? (
-      <div className="bg-white rounded-2xl border border-gray-100 p-5">
-        <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Feature context</p>
-        <p className="text-sm text-gray-700 leading-relaxed">{request.context}</p>
+  const ContextBlock = () => {
+    const hasMeta = request.domain || request.targetAudience || request.publishingDeadline;
+    const hasContext = request.context || request.problemStatement || request.competitorResearch;
+    if (!hasMeta && !hasContext) return null;
+    return (
+      <div className="space-y-3">
+        {/* Meta row */}
+        {hasMeta && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 flex flex-wrap gap-5">
+            {request.domain && (
+              <div>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Domain</p>
+                <p className="text-sm text-gray-800 font-medium">{request.domain}</p>
+              </div>
+            )}
+            {request.targetAudience && (
+              <div>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Target audience</p>
+                <p className="text-sm text-gray-800 font-medium">{request.targetAudience}</p>
+              </div>
+            )}
+            {request.publishingDeadline && (
+              <div>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Publishing deadline</p>
+                <p className="text-sm text-gray-800 font-medium">
+                  {new Date(request.publishingDeadline).toLocaleDateString("en-US", {
+                    month: "long", day: "numeric", year: "numeric",
+                  })}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+        {/* Context */}
+        {request.context && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Feature context</p>
+            <p className="text-sm text-gray-700 leading-relaxed">{request.context}</p>
+          </div>
+        )}
+        {/* Problem statement */}
+        {request.problemStatement && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">What problem does it solve?</p>
+            <p className="text-sm text-gray-700 leading-relaxed">{request.problemStatement}</p>
+          </div>
+        )}
+        {/* Competitor research */}
+        {(request.competitorResearch || (request.competitorScreenshotURLs ?? []).length > 0) && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Competitor research</p>
+            {request.competitorResearch && (
+              <p className="text-sm text-gray-700 leading-relaxed mb-3">{request.competitorResearch}</p>
+            )}
+            {(request.competitorScreenshotURLs ?? []).length > 0 && (
+              <div className="flex gap-3 overflow-x-auto pb-1">
+                {(request.competitorScreenshotURLs ?? []).map((url, i) => (
+                  <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="shrink-0">
+                    <div className="relative w-36 h-24 rounded-lg overflow-hidden border border-gray-100 hover:border-gray-300 transition-colors">
+                      <Image src={url} alt={`Competitor ref ${i + 1}`} fill className="object-cover" />
+                    </div>
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
-    ) : null;
+    );
+  };
 
   const ScreenshotsBlock = () =>
     screenshotURLs.length > 0 ? (

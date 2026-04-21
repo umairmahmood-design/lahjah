@@ -74,6 +74,8 @@ interface Selection {
 }
 
 // ── Constants ────────────────────────────────────────────────────────────
+const DOMAINS = ["Shopping", "New Verticals", "Growth", "Fulfillment", "Fintech"] as const;
+const AUDIENCES = ["Customer", "Vendor", "Rider", "Internal", "External"] as const;
 const TONES: Tone[] = ["Friendly", "Professional", "Playful", "Urgent", "Formal"];
 const TONE_DESCRIPTIONS: Record<Tone, string> = {
   Friendly: "Warm, approachable, conversational",
@@ -96,10 +98,17 @@ export default function NewRequestPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const labelInputRef = useRef<HTMLInputElement>(null);
+  const competitorFileInputRef = useRef<HTMLInputElement>(null);
 
   // Form state
   const [title, setTitle] = useState("");
+  const [domain, setDomain] = useState("");
+  const [targetAudience, setTargetAudience] = useState("");
+  const [publishingDeadline, setPublishingDeadline] = useState("");
   const [context, setContext] = useState("");
+  const [problemStatement, setProblemStatement] = useState("");
+  const [competitorResearch, setCompetitorResearch] = useState("");
+  const [competitorFiles, setCompetitorFiles] = useState<UploadedFile[]>([]);
   const [tone, setTone] = useState<Tone>("Professional");
   const [lockedTerms, setLockedTerms] = useState<string[]>([]);
   const [termInput, setTermInput] = useState("");
@@ -212,6 +221,66 @@ export default function NewRequestPage() {
       return updated;
     });
     setActiveScreenIdx((i) => Math.max(0, Math.min(i, screenshotUrls.length - 2)));
+  }
+
+  // ── Competitor screenshot upload ─────────────────────────────────────
+  function handleCompetitorFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const selected = Array.from(e.target.files ?? []);
+    if (!selected.length) return;
+    const startIdx = competitorFiles.length;
+    const newFiles: UploadedFile[] = selected.map((file) => ({
+      file,
+      previewUrl: URL.createObjectURL(file),
+      progress: 0,
+      downloadUrl: null,
+      error: null,
+    }));
+    setCompetitorFiles((prev) => [...prev, ...newFiles]);
+    if (competitorFileInputRef.current) competitorFileInputRef.current.value = "";
+    newFiles.forEach((f, i) => uploadCompetitorFile(f.file, startIdx + i));
+  }
+
+  function uploadCompetitorFile(file: File, index: number) {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    const path = `competitor-refs/${uid}/${Date.now()}_${file.name}`;
+    const storageRef = ref(storage, path);
+    const task = uploadBytesResumable(storageRef, file);
+    task.on(
+      "state_changed",
+      (snap) => {
+        const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+        setCompetitorFiles((prev) => {
+          const updated = [...prev];
+          if (updated[index]) updated[index] = { ...updated[index], progress: pct };
+          return updated;
+        });
+      },
+      (err) => {
+        setCompetitorFiles((prev) => {
+          const updated = [...prev];
+          if (updated[index]) updated[index] = { ...updated[index], error: err.message };
+          return updated;
+        });
+      },
+      async () => {
+        const url = await getDownloadURL(task.snapshot.ref);
+        setCompetitorFiles((prev) => {
+          const updated = [...prev];
+          if (updated[index]) updated[index] = { ...updated[index], downloadUrl: url, progress: 100 };
+          return updated;
+        });
+      }
+    );
+  }
+
+  function removeCompetitorFile(index: number) {
+    setCompetitorFiles((prev) => {
+      const updated = [...prev];
+      const removed = updated.splice(index, 1)[0];
+      URL.revokeObjectURL(removed.previewUrl);
+      return updated;
+    });
   }
 
   // ── Locked terms ─────────────────────────────────────────────────────
@@ -362,7 +431,11 @@ export default function NewRequestPage() {
   async function save(status: "draft" | "submitted") {
     setError("");
     if (!title.trim()) { setError("Request title is required."); return; }
+    if (status === "submitted" && !domain) { setError("Please select a domain before submitting."); return; }
+    if (status === "submitted" && !targetAudience) { setError("Please select a target audience before submitting."); return; }
+    if (status === "submitted" && !publishingDeadline) { setError("Publishing deadline is required before submitting."); return; }
     if (status === "submitted" && !context.trim()) { setError("Feature context is required before submitting."); return; }
+    if (status === "submitted" && !problemStatement.trim()) { setError("Problem statement is required before submitting."); return; }
     if (status === "submitted" && annotations.length === 0) { setError("Add at least one annotation before submitting."); return; }
     if (uploadsInProgress) { setError("Please wait for uploads to finish."); return; }
     const uid = auth.currentUser?.uid;
@@ -394,7 +467,15 @@ export default function NewRequestPage() {
 
       const docRef = await addDoc(collection(db, "copyRequests"), {
         title: title.trim(),
+        domain,
+        targetAudience,
+        publishingDeadline,
         context: context.trim(),
+        problemStatement: problemStatement.trim(),
+        competitorResearch: competitorResearch.trim(),
+        competitorScreenshotURLs: competitorFiles
+          .filter((f) => f.downloadUrl)
+          .map((f) => f.downloadUrl as string),
         tone,
         lockedTerms: finalTerms,
         screenshotURLs,
@@ -467,13 +548,60 @@ export default function NewRequestPage() {
               />
             </div>
 
+            {/* Domain / Target Audience / Deadline */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                    Domain <span className="text-red-400">*</span>
+                  </label>
+                  <select
+                    value={domain}
+                    onChange={(e) => setDomain(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition bg-white text-gray-700"
+                  >
+                    <option value="">Select…</option>
+                    {DOMAINS.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                    Target audience <span className="text-red-400">*</span>
+                  </label>
+                  <select
+                    value={targetAudience}
+                    onChange={(e) => setTargetAudience(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition bg-white text-gray-700"
+                  >
+                    <option value="">Select…</option>
+                    {AUDIENCES.map((a) => (
+                      <option key={a} value={a}>{a}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                  Publishing deadline <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={publishingDeadline}
+                  onChange={(e) => setPublishingDeadline(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition text-gray-700"
+                />
+              </div>
+            </div>
+
             {/* Feature context */}
             <div className="bg-white rounded-2xl border border-gray-100 p-5">
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Feature context <span className="text-red-400">*</span>
               </label>
               <p className="text-xs text-gray-400 mb-2">
-                Describe what this feature does and what the user is trying to accomplish.
+                Describe what the feature or design does, how the user will interact with it, and the business rationale behind it. Give full context of the user journey.
               </p>
               <textarea
                 value={context}
@@ -482,6 +610,100 @@ export default function NewRequestPage() {
                 placeholder="e.g. This is the checkout screen for a food delivery app. The user has reviewed their cart and is ready to place the order. We need copy for the main CTA button, the order summary heading, and the error state when payment fails."
                 className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition resize-none"
               />
+            </div>
+
+            {/* Problem statement */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                What problem does it solve? <span className="text-red-400">*</span>
+              </label>
+              <p className="text-xs text-gray-400 mb-2">
+                Explain both the user pain point and the business pain or goal this feature addresses. Why does this feature exist?
+              </p>
+              <textarea
+                value={problemStatement}
+                onChange={(e) => setProblemStatement(e.target.value)}
+                rows={3}
+                placeholder="e.g. Users frequently drop off at checkout because they're unsure if the order went through. This feature adds clear confirmation states to reduce support tickets and improve trust."
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition resize-none"
+              />
+            </div>
+
+            {/* Competitor research */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                How do similar competitors do it?
+                <span className="ml-1.5 text-xs font-normal text-gray-400">Optional</span>
+              </label>
+              <p className="text-xs text-gray-400 mb-2">
+                How do similar competitors (Keeta, Jahez, Ninja, etc.) do it?
+              </p>
+              <textarea
+                value={competitorResearch}
+                onChange={(e) => setCompetitorResearch(e.target.value)}
+                rows={3}
+                placeholder="e.g. Keeta uses 'Order placed!' with a checkmark. Jahez shows a countdown timer before confirming."
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition resize-none mb-3"
+              />
+              {/* Competitor screenshot upload */}
+              <input
+                ref={competitorFileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleCompetitorFileChange}
+              />
+              {competitorFiles.length === 0 ? (
+                <button
+                  type="button"
+                  onClick={() => competitorFileInputRef.current?.click()}
+                  className="w-full border border-dashed border-gray-200 rounded-xl py-3 flex items-center justify-center gap-2 hover:border-ink/20 hover:bg-brand/10 transition-all text-xs text-gray-400"
+                >
+                  <span className="text-base">⬆</span>
+                  Upload competitor screenshots
+                </button>
+              ) : (
+                <div>
+                  <div className="grid grid-cols-4 gap-2 mb-2">
+                    {competitorFiles.map((f, i) => (
+                      <div key={i} className="relative group aspect-square">
+                        <Image
+                          src={f.previewUrl}
+                          alt={f.file.name}
+                          fill
+                          className="object-cover rounded-lg border border-gray-100"
+                          sizes="80px"
+                        />
+                        {f.progress < 100 && !f.error && (
+                          <div className="absolute inset-0 bg-black/40 rounded-lg flex items-center justify-center">
+                            <span className="text-white text-[10px] font-medium">{f.progress}%</span>
+                          </div>
+                        )}
+                        {f.error && (
+                          <div className="absolute inset-0 bg-red-500/60 rounded-lg flex items-center justify-center">
+                            <span className="text-white text-[10px]">Error</span>
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeCompetitorFile(i)}
+                          className="absolute top-1 right-1 w-4 h-4 bg-black/50 rounded-full text-white text-[10px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => competitorFileInputRef.current?.click()}
+                      className="aspect-square rounded-lg border border-dashed border-gray-200 flex items-center justify-center text-gray-300 hover:border-ink/20 hover:text-ink/40 text-xl"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Tone */}
