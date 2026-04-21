@@ -358,8 +358,8 @@ export default function NewRequestPage() {
 
     (async () => {
       try {
-        console.log("[OCR] Fetching image blob…");
-        const response = await fetch(currentUrl);
+        console.log("[OCR] Fetching image blob via proxy…");
+        const response = await fetch(`/api/proxy-image?url=${encodeURIComponent(currentUrl)}`);
         if (!response.ok) throw new Error(`Fetch ${response.status}: ${response.statusText}`);
         const blob = await response.blob();
         const blobUrl = URL.createObjectURL(blob);

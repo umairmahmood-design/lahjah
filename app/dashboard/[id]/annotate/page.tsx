@@ -125,8 +125,8 @@ export default function AnnotatePage() {
     (async () => {
       try {
         // Fetch image as blob to avoid canvas CORS taint from Firebase Storage URLs
-        console.log("[OCR] Fetching image blob…");
-        const response = await fetch(screenshotUrl);
+        console.log("[OCR] Fetching image blob via proxy…");
+        const response = await fetch(`/api/proxy-image?url=${encodeURIComponent(screenshotUrl)}`);
         if (!response.ok) throw new Error(`Fetch ${response.status}: ${response.statusText}`);
         const blob = await response.blob();
         const blobUrl = URL.createObjectURL(blob);
