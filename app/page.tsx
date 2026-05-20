@@ -82,7 +82,7 @@ export default function LandingPage() {
       {/* Features */}
       <section className="max-w-5xl mx-auto px-8 pb-24">
         <h2 className="text-3xl font-bold text-center text-gray-900 mb-14">
-          Built for how your team works
+          Faster copy. Less back and forth.
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {FEATURES.map((f) => (
