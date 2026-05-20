@@ -10,6 +10,7 @@ import {
 } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
+import FloatingLetters from "@/components/FloatingLetters";
 
 // TODO: re-add @hungerstation.com restriction after OKTA approval
 
@@ -55,7 +56,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="animated-gradient min-h-screen flex flex-col items-center justify-center px-4">
+    <div className="animated-gradient min-h-screen relative overflow-hidden">
+      <FloatingLetters />
+      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4">
       <Link href="/" className="logo-arabic text-3xl text-ink mb-10">
         لهجة
       </Link>
@@ -91,6 +94,7 @@ export default function LoginPage() {
       <p className="mt-6 text-sm text-gray-400">
         By continuing you agree to our Terms of Service.
       </p>
+      </div>{/* end z-10 */}
     </div>
   );
 }

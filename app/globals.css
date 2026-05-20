@@ -11,6 +11,16 @@ body {
   font-weight: 700;
 }
 
+@keyframes letter-drift {
+  0%   { transform: translateY(0)       translateX(0);    opacity: 0; }
+  8%   { opacity: 1; }
+  25%  { transform: translateY(-27vh)   translateX(12px); }
+  50%  { transform: translateY(-55vh)   translateX(-8px); }
+  75%  { transform: translateY(-82vh)   translateX(10px); }
+  92%  { opacity: 1; }
+  100% { transform: translateY(-110vh)  translateX(0);    opacity: 0; }
+}
+
 @keyframes gradient-shift {
   0%   { background-position: 0% 50%; }
   50%  { background-position: 100% 50%; }

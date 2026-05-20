@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import FloatingLetters from "@/components/FloatingLetters";
 
 function HeartIcon() {
   return (
@@ -29,7 +30,9 @@ const FEATURES = [
 
 export default function LandingPage() {
   return (
-    <div className="animated-gradient min-h-screen flex flex-col">
+    <div className="animated-gradient min-h-screen relative overflow-hidden">
+      <FloatingLetters />
+      <div className="relative z-10 min-h-screen flex flex-col">
       {/* Nav */}
       <nav className="flex items-center justify-between px-8 py-5 border-b border-white/30">
         <div className="flex items-center gap-3">
@@ -102,6 +105,7 @@ export default function LandingPage() {
         <span className="logo-arabic text-ink">لهجة · Lahjah</span>
         <span>© {new Date().getFullYear()} Lahjah. All rights reserved.</span>
       </footer>
+      </div>{/* end z-10 */}
     </div>
   );
 }

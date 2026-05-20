@@ -6,6 +6,7 @@ import { onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import type { User } from "firebase/auth";
+import FloatingLetters from "@/components/FloatingLetters";
 
 type Role = "designer" | "copy_team";
 
@@ -76,7 +77,9 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="animated-gradient min-h-screen flex flex-col items-center justify-center px-4">
+    <div className="animated-gradient min-h-screen relative overflow-hidden">
+      <FloatingLetters />
+      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4">
       <div className="logo-arabic text-3xl text-ink mb-10">لهجة</div>
 
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
@@ -150,6 +153,7 @@ export default function OnboardingPage() {
           Sign out
         </button>
       </div>
+      </div>{/* end z-10 */}
     </div>
   );
 }
