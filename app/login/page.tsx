@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import {
+  GoogleAuthProvider,
+  signInWithRedirect,
+  getRedirectResult,
+} from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 
@@ -12,36 +16,40 @@ import { auth, db } from "@/lib/firebase";
 export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // true on mount — checking for redirect result
+
+  useEffect(() => {
+    async function handleRedirectResult() {
+      try {
+        const cred = await getRedirectResult(auth);
+        if (!cred) {
+          // No redirect in progress — show the sign-in button
+          setLoading(false);
+          return;
+        }
+
+        // Came back from Google redirect — check onboarding status
+        const userSnap = await getDoc(doc(db, "users", cred.user.uid));
+        if (userSnap.exists() && userSnap.data().onboardingCompleted === true) {
+          router.push("/dashboard");
+        } else {
+          router.push("/onboarding");
+        }
+      } catch {
+        setError("Sign-in failed. Please try again.");
+        setLoading(false);
+      }
+    }
+
+    handleRedirectResult();
+  }, [router]);
 
   async function handleGoogleSignIn() {
     setError("");
     setLoading(true);
-    try {
-      const provider = new GoogleAuthProvider();
-      const cred = await signInWithPopup(auth, provider);
-      const user = cred.user;
-
-      // Check onboarding status
-      const userSnap = await getDoc(doc(db, "users", user.uid));
-      if (userSnap.exists() && userSnap.data().onboardingCompleted === true) {
-        router.push("/dashboard");
-      } else {
-        router.push("/onboarding");
-      }
-    } catch (err: unknown) {
-      // User closed the popup — don't show an error
-      if (
-        err instanceof Error &&
-        (err.message.includes("popup-closed") ||
-          err.message.includes("cancelled"))
-      ) {
-        return;
-      }
-      setError("Sign-in failed. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    const provider = new GoogleAuthProvider();
+    await signInWithRedirect(auth, provider);
+    // Page navigates away — no further code runs here
   }
 
   return (
