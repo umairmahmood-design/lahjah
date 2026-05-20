@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   GoogleAuthProvider,
   signInWithRedirect,
-  getRedirectResult,
+  onAuthStateChanged,
 } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
@@ -16,32 +16,32 @@ import { auth, db } from "@/lib/firebase";
 export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true); // true on mount — checking for redirect result
+  const [loading, setLoading] = useState(true); // true on mount — waiting for auth state
 
   useEffect(() => {
-    async function handleRedirectResult() {
-      try {
-        const cred = await getRedirectResult(auth);
-        if (!cred) {
-          // No redirect in progress — show the sign-in button
-          setLoading(false);
-          return;
-        }
+    // Firebase automatically processes the pending redirect result and fires
+    // onAuthStateChanged with the user. This is more reliable than
+    // getRedirectResult, which can return null in Next.js App Router.
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
-        // Came back from Google redirect — check onboarding status
-        const userSnap = await getDoc(doc(db, "users", cred.user.uid));
+      try {
+        const userSnap = await getDoc(doc(db, "users", user.uid));
         if (userSnap.exists() && userSnap.data().onboardingCompleted === true) {
           router.push("/dashboard");
         } else {
           router.push("/onboarding");
         }
       } catch {
-        setError("Sign-in failed. Please try again.");
+        setError("Failed to load your profile. Please try again.");
         setLoading(false);
       }
-    }
+    });
 
-    handleRedirectResult();
+    return unsub;
   }, [router]);
 
   async function handleGoogleSignIn() {
@@ -49,7 +49,7 @@ export default function LoginPage() {
     setLoading(true);
     const provider = new GoogleAuthProvider();
     await signInWithRedirect(auth, provider);
-    // Page navigates away — no further code runs here
+    // Page navigates away to Google — no further code runs here
   }
 
   return (
