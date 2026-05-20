@@ -55,7 +55,8 @@ export default function OnboardingPage() {
         onboardingCompleted: true,
       });
       router.push("/dashboard");
-    } catch {
+    } catch (err) {
+      console.error("[onboarding] Firestore error writing users doc:", err);
       setError("Failed to save your profile. Please try again.");
       setSaving(false);
     }

@@ -30,12 +30,14 @@ export default function LoginPage() {
 
       try {
         const userSnap = await getDoc(doc(db, "users", user.uid));
+        // userSnap.exists() === false is expected for brand-new users — route to onboarding
         if (userSnap.exists() && userSnap.data().onboardingCompleted === true) {
           router.push("/dashboard");
         } else {
           router.push("/onboarding");
         }
-      } catch {
+      } catch (err) {
+        console.error("[login] Firestore error reading users doc:", err);
         setError("Failed to load your profile. Please try again.");
         setLoading(false);
       }
