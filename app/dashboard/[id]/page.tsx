@@ -405,7 +405,7 @@ export default function RequestDetailPage() {
 
           {request.status === "changes_requested" && (
             <div className="bg-[#FFEA00]/20 border border-[#FFEA00] rounded-2xl p-4">
-              <p className="text-sm font-semibold text-ink">Changes requested — see comments below each string.</p>
+              <p className="text-sm font-semibold text-ink">Changes requested. See comments below each string.</p>
             </div>
           )}
 
@@ -771,7 +771,7 @@ export default function RequestDetailPage() {
               {request.status === "approved"
                 ? "This request has been approved."
                 : request.status === "changes_requested"
-                ? "Review submitted — waiting for the designer to revise and resubmit."
+                ? "Review submitted. Waiting for the designer to revise and resubmit."
                 : "This request has been closed."}
             </p>
           </div>

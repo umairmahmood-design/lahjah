@@ -16,7 +16,7 @@ const notoKufi = Noto_Kufi_Arabic({
 });
 
 export const metadata: Metadata = {
-  title: "Lahjah — AI Copy Generation & Review",
+  title: "Lahjah: AI Copy Generation & Review",
   description:
     "AI-powered copy generation and review platform for product and design teams.",
 };

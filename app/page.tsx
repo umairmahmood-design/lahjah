@@ -24,7 +24,7 @@ const FEATURES = [
   {
     icon: "⇄",
     title: "For Everyone",
-    body: "Bilingual by default — EN and AR generated together",
+    body: "Bilingual by default: EN and AR generated together",
   },
 ];
 
@@ -60,13 +60,13 @@ export default function LandingPage() {
       <section className="max-w-4xl mx-auto px-8 pt-24 pb-20 text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 text-ink text-xs font-medium mb-8 shadow-sm">
           <HeartIcon />
-          Built by Product Design Team
+          Built by HS Product Design Team
         </div>
         <h1 className="text-5xl font-bold text-gray-900 leading-tight mb-6">
           The copy tool built for HungerStation teams
         </h1>
         <p className="text-xl text-gray-700 max-w-2xl mx-auto mb-10">
-          Generate and review product copy — in English and Arabic, in minutes.
+          Generate and review product copy, in English and Arabic, in minutes.
         </p>
         <Link
           href="/login"
@@ -103,7 +103,9 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="mt-auto border-t border-white/30 px-8 py-6 flex items-center justify-between text-sm text-gray-600">
         <span className="logo-arabic text-ink">لهجة · Lahjah</span>
-        <span>© {new Date().getFullYear()} Lahjah. All rights reserved.</span>
+        <a href="/adapt" className="underline underline-offset-2 hover:text-ink transition-colors">
+          Adapt Lahjah for your entity
+        </a>
       </footer>
       </div>{/* end z-10 */}
     </div>

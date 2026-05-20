@@ -604,7 +604,7 @@ export default function NewRequestPage() {
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Checkout screen — CTA and error states"
+                placeholder="e.g. Checkout screen: CTA and error states"
                 className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"
               />
             </div>
