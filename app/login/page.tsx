@@ -91,9 +91,6 @@ export default function LoginPage() {
         </button>
       </div>
 
-      <p className="mt-6 text-sm text-gray-400">
-        By continuing you agree to our Terms of Service.
-      </p>
       </div>{/* end z-10 */}
     </div>
   );
