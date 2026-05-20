@@ -117,11 +117,11 @@ export default function OnboardingPage() {
               onClick={() => setSelected(value)}
               className={`w-full text-left px-4 py-4 rounded-xl border-2 transition-all ${
                 selected === value
-                  ? "border-brand bg-brand/5"
+                  ? "border-ink bg-gray-50"
                   : "border-gray-100 hover:border-gray-200"
               }`}
             >
-              <p className={`text-sm font-semibold ${selected === value ? "text-brand" : "text-gray-900"}`}>
+              <p className={`text-sm font-semibold ${selected === value ? "text-ink" : "text-gray-900"}`}>
                 {label}
               </p>
               <p className="text-xs text-gray-400 mt-0.5">{description}</p>
