@@ -55,12 +55,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
+    <div className="animated-gradient min-h-screen flex flex-col items-center justify-center px-4">
       <Link href="/" className="text-3xl font-bold text-ink mb-10">
         لهجة
       </Link>
 
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+      <div className="w-full max-w-sm bg-white/90 backdrop-blur-md rounded-2xl shadow-xl border border-white/60 p-8">
         <h1 className="text-xl font-semibold text-gray-900 mb-1 text-center">
           Sign in to Lahjah
         </h1>

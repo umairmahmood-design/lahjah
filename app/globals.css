@@ -7,3 +7,23 @@
 body {
   font-family: 'Inter', system-ui, sans-serif;
 }
+
+@keyframes gradient-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animated-gradient {
+  background: linear-gradient(
+    135deg,
+    #FFEA00 0%,
+    #fffbe6 20%,
+    #e8eeff 40%,
+    #1B4FD8 60%,
+    #e8eeff 80%,
+    #FFEA00 100%
+  );
+  background-size: 400% 400%;
+  animation: gradient-shift 10s ease infinite;
+}
