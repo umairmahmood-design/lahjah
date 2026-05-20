@@ -3,19 +3,27 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         router.replace("/login");
-      } else {
-        setChecked(true);
+        return;
       }
+
+      const userSnap = await getDoc(doc(db, "users", user.uid));
+      if (!userSnap.exists() || userSnap.data().onboardingCompleted !== true) {
+        router.replace("/onboarding");
+        return;
+      }
+
+      setChecked(true);
     });
     return unsub;
   }, [router]);

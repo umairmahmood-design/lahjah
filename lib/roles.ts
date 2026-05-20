@@ -13,22 +13,12 @@ import { db } from "./firebase";
 export type UserRole = "designer" | "copy_team";
 
 /**
- * Ensures a users/{uid} document exists in Firestore.
- * - If the doc already exists, returns its role.
- * - If missing, creates one with role "designer" by default.
- *   Exception: if the UID is listed in the legacy settings/admins document,
- *   the user gets role "copy_team" to preserve access during migration.
- *
- * Call this after every sign-in and sign-up.
+ * Returns the role for a user document that already exists in Firestore.
+ * User documents are created during the /onboarding flow (Google sign-in).
  *
  * --- HOW TO PROMOTE A USER TO COPY TEAM ---
  * In the Firebase console, go to Firestore → users → {uid} and set:
  *   role: "copy_team"
- *
- * Or run this in a browser console while signed in as a superuser:
- *   import { doc, updateDoc } from "firebase/firestore";
- *   import { db } from "@/lib/firebase";
- *   await updateDoc(doc(db, "users", "<TARGET_UID>"), { role: "copy_team" });
  * ------------------------------------------
  */
 export async function ensureUserDoc(uid: string): Promise<UserRole> {
@@ -39,7 +29,8 @@ export async function ensureUserDoc(uid: string): Promise<UserRole> {
     return (userSnap.data().role as UserRole) ?? "designer";
   }
 
-  // New doc — check legacy settings/admins so existing admins keep their access
+  // Fallback for legacy docs that predate the onboarding flow.
+  // Check legacy settings/admins so existing admins keep their access.
   const adminsSnap = await getDoc(doc(db, "settings", "admins"));
   const legacyAdmins: string[] = adminsSnap.exists()
     ? (adminsSnap.data()?.uids as string[]) ?? []
@@ -47,13 +38,6 @@ export async function ensureUserDoc(uid: string): Promise<UserRole> {
   const role: UserRole = legacyAdmins.includes(uid) ? "copy_team" : "designer";
 
   await setDoc(userRef, { role, createdAt: serverTimestamp() });
-
-  if (process.env.NODE_ENV !== "production") {
-    console.info(
-      `[lahjah] Created users/${uid} with role="${role}". ` +
-        `To promote to copy_team: Firestore → users → ${uid} → set role: "copy_team"`
-    );
-  }
 
   return role;
 }
