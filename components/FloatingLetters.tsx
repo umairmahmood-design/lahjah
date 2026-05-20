@@ -41,7 +41,7 @@ export default function FloatingLetters({ count = 22 }: { count?: number }) {
         size: Math.round(rand(40, 120)),
         duration: rand(15, 30),
         delay: rand(-28, 0),  // pre-seed so letters are already drifting
-        opacity: rand(0.07, 0.12),
+        opacity: rand(0.04, 0.08),
       };
     });
     setLetters(defs);
@@ -72,7 +72,7 @@ export default function FloatingLetters({ count = 22 }: { count?: number }) {
             fontFamily: l.isArabic
               ? "var(--font-noto-kufi), sans-serif"
               : "inherit",
-            color: "#222629",
+            color: "#FFFFFF",
             opacity: l.opacity,
             animation: `letter-drift ${l.duration}s ${l.delay}s linear infinite`,
             userSelect: "none",
