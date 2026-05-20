@@ -950,7 +950,7 @@ export default function NewRequestPage() {
                           key={i}
                           onClick={() => { setActiveScreenIdx(i); setSelectedId(null); }}
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
-                            i === safeActiveIdx ? "bg-brand text-ink" : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                            i === safeActiveIdx ? "bg-ink text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"
                           }`}
                         >
                           Screenshot {i + 1}
@@ -1080,7 +1080,7 @@ export default function NewRequestPage() {
                           }}
                           className={`flex items-start gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-colors ${
                             ann.id === selectedId
-                              ? "border-brand bg-brand/10"
+                              ? "border-ink bg-gray-50"
                               : "border-gray-100 bg-gray-50 hover:border-gray-200"
                           }`}
                         >
@@ -1207,7 +1207,7 @@ export default function NewRequestPage() {
                                     }
                                     className={`w-full text-left px-4 py-3 rounded-xl border text-sm leading-relaxed transition-all ${
                                       isSelected
-                                        ? "border-brand bg-brand/20 text-ink font-medium"
+                                        ? "border-ink bg-gray-50 text-ink font-medium"
                                         : "border-gray-100 text-gray-700 hover:border-gray-200 hover:bg-gray-50"
                                     }`}
                                   >
@@ -1239,7 +1239,7 @@ export default function NewRequestPage() {
                                     }
                                     className={`w-full text-right px-4 py-3 rounded-xl border text-sm leading-relaxed transition-all ${
                                       isSelected
-                                        ? "border-brand bg-brand/20 text-ink font-medium"
+                                        ? "border-ink bg-gray-50 text-ink font-medium"
                                         : "border-gray-100 text-gray-700 hover:border-gray-200 hover:bg-gray-50"
                                     }`}
                                   >

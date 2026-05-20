@@ -425,7 +425,7 @@ export default function GeneratePage() {
                               }
                               className={`w-full text-left px-4 py-3 rounded-xl border text-sm leading-relaxed transition-all ${
                                 isSelected
-                                  ? "border-brand bg-brand/20 text-ink font-medium"
+                                  ? "border-ink bg-gray-50 text-ink font-medium"
                                   : "border-gray-100 text-gray-700 hover:border-gray-200 hover:bg-gray-50"
                               }`}
                             >
@@ -458,7 +458,7 @@ export default function GeneratePage() {
                               }
                               className={`w-full text-right px-4 py-3 rounded-xl border text-sm leading-relaxed transition-all ${
                                 isSelected
-                                  ? "border-brand bg-brand/20 text-ink font-medium"
+                                  ? "border-ink bg-gray-50 text-ink font-medium"
                                   : "border-gray-100 text-gray-700 hover:border-gray-200 hover:bg-gray-50"
                               }`}
                               dir="rtl"
