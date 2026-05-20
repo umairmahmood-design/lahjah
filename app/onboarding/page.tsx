@@ -77,7 +77,7 @@ export default function OnboardingPage() {
 
   return (
     <div className="animated-gradient min-h-screen flex flex-col items-center justify-center px-4">
-      <div className="text-3xl font-bold text-ink mb-10">لهجة</div>
+      <div className="logo-arabic text-3xl text-ink mb-10">لهجة</div>
 
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
         {/* User info */}

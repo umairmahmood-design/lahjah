@@ -327,7 +327,7 @@ export default function AnnotatePage() {
           <div className="flex items-center gap-2.5 shrink-0">
             <Image src="/hs-logo.png" alt="HungerStation" height={20} width={43} className="object-contain brightness-0 invert" />
             <span className="w-px h-4 bg-white/20 shrink-0" />
-            <span className="text-base font-bold text-white">لهجة</span>
+            <span className="logo-arabic text-base text-white">لهجة</span>
           </div>
           <span className="w-px h-4 bg-white/10 shrink-0" />
           <button

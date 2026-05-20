@@ -33,7 +33,7 @@ export default function DashboardNav() {
       <Link href="/dashboard" className="flex items-center gap-3">
         <Image src="/hs-logo.png" alt="HungerStation" height={24} width={52} className="object-contain" />
         <span className="w-px h-5 bg-gray-200 shrink-0" />
-        <span className="text-2xl font-bold text-ink">لهجة</span>
+        <span className="logo-arabic text-2xl text-ink">لهجة</span>
       </Link>
       <nav className="flex items-center gap-4 sm:gap-6">
         <Link

@@ -56,7 +56,7 @@ export default function LoginPage() {
 
   return (
     <div className="animated-gradient min-h-screen flex flex-col items-center justify-center px-4">
-      <Link href="/" className="text-3xl font-bold text-ink mb-10">
+      <Link href="/" className="logo-arabic text-3xl text-ink mb-10">
         لهجة
       </Link>
 

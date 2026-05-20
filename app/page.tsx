@@ -1,15 +1,25 @@
 import Link from "next/link";
 import Image from "next/image";
 
+function HeartIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+    </svg>
+  );
+}
+
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white">
+      {/* Gradient hero area */}
+      <div className="animated-gradient">
       {/* Nav */}
-      <nav className="flex items-center justify-between px-8 py-5 border-b border-gray-100">
+      <nav className="flex items-center justify-between px-8 py-5 border-b border-white/30">
         <div className="flex items-center gap-3">
           <Image src="/hs-logo.png" alt="HungerStation" height={24} width={52} className="object-contain" />
           <span className="w-px h-5 bg-gray-200 shrink-0" />
-          <span className="text-2xl font-bold text-ink">لهجة</span>
+          <span className="logo-arabic text-2xl text-ink">لهجة</span>
         </div>
         <div className="flex items-center gap-6">
           <Link
@@ -29,33 +39,24 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="max-w-4xl mx-auto px-8 pt-24 pb-20 text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#F4F5F6] text-ink text-xs font-medium mb-8">
-          <span className="w-1.5 h-1.5 rounded-full bg-ink animate-pulse" />
-          Powered by Claude AI
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 text-ink text-xs font-medium mb-8 shadow-sm">
+          <HeartIcon />
+          Built by Product Design Team
         </div>
         <h1 className="text-5xl font-bold text-gray-900 leading-tight mb-6">
-          Copy that speaks{" "}
-          <span className="text-ink">every language</span>
+          The copy tool built for HungerStation teams
         </h1>
-        <p className="text-xl text-gray-500 max-w-2xl mx-auto mb-10">
-          Lahjah generates and reviews product copy in English and Arabic —
-          instantly. Built for product and design teams shipping in MENA markets.
+        <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-10">
+          Generate and review product copy — in English and Arabic, in minutes.
         </p>
-        <div className="flex items-center justify-center gap-4">
-          <Link
-            href="/login"
-            className="px-6 py-3 rounded-xl bg-brand text-ink font-semibold text-base hover:bg-brand-dark transition-colors shadow-sm"
-          >
-            Start generating copy
-          </Link>
-          <a
-            href="#features"
-            className="px-6 py-3 rounded-xl bg-ink text-white font-semibold text-base hover:bg-ink/90 transition-colors"
-          >
-            See how it works
-          </a>
-        </div>
+        <Link
+          href="/login"
+          className="inline-flex px-6 py-3 rounded-xl bg-brand text-ink font-semibold text-base hover:bg-brand-dark transition-colors shadow-sm"
+        >
+          Start generating copy
+        </Link>
       </section>
+      </div>{/* end animated-gradient */}
 
       {/* Features */}
       <section id="features" className="max-w-5xl mx-auto px-8 py-20">
@@ -119,7 +120,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="border-t border-gray-100 px-8 py-6 flex items-center justify-between text-sm text-gray-400">
-        <span className="font-bold text-ink">لهجة · Lahjah</span>
+        <span className="logo-arabic text-ink">لهجة · Lahjah</span>
         <span>© {new Date().getFullYear()} Lahjah. All rights reserved.</span>
       </footer>
     </div>
