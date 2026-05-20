@@ -17,13 +17,12 @@ body {
 .animated-gradient {
   background: linear-gradient(
     135deg,
-    #FFEA00 0%,
-    #fffbe6 20%,
-    #e8eeff 40%,
-    #1B4FD8 60%,
-    #e8eeff 80%,
-    #FFEA00 100%
+    #FFFDE7,
+    #87CEEF,
+    #FFB3BA,
+    #D4B8F0,
+    #FFFDE7
   );
   background-size: 400% 400%;
-  animation: gradient-shift 10s ease infinite;
+  animation: gradient-shift 20s ease-in-out infinite;
 }

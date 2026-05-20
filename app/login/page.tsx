@@ -60,7 +60,7 @@ export default function LoginPage() {
         لهجة
       </Link>
 
-      <div className="w-full max-w-sm bg-white/90 backdrop-blur-md rounded-2xl shadow-xl border border-white/60 p-8">
+      <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
         <h1 className="text-xl font-semibold text-gray-900 mb-1 text-center">
           Sign in to Lahjah
         </h1>

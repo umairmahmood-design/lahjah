@@ -79,7 +79,7 @@ export default function OnboardingPage() {
     <div className="animated-gradient min-h-screen flex flex-col items-center justify-center px-4">
       <div className="text-3xl font-bold text-ink mb-10">لهجة</div>
 
-      <div className="w-full max-w-md bg-white/90 backdrop-blur-md rounded-2xl shadow-xl border border-white/60 p-8">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
         {/* User info */}
         <div className="flex items-center gap-3 mb-8">
           {user.photoURL ? (
