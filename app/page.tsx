@@ -9,28 +9,44 @@ function HeartIcon() {
   );
 }
 
+const FEATURES = [
+  {
+    icon: "✦",
+    title: "For Designers",
+    body: "Submit copy requests without leaving your workflow",
+  },
+  {
+    icon: "◎",
+    title: "For Copy Team",
+    body: "Review, approve, and give feedback in one place",
+  },
+  {
+    icon: "⇄",
+    title: "For Everyone",
+    body: "Bilingual by default — EN and AR generated together",
+  },
+];
+
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-white">
-      {/* Gradient hero area */}
-      <div className="animated-gradient">
+    <div className="animated-gradient min-h-screen flex flex-col">
       {/* Nav */}
       <nav className="flex items-center justify-between px-8 py-5 border-b border-white/30">
         <div className="flex items-center gap-3">
           <Image src="/hs-logo.png" alt="HungerStation" height={24} width={52} className="object-contain" />
-          <span className="w-px h-5 bg-gray-200 shrink-0" />
+          <span className="w-px h-5 bg-gray-400/40 shrink-0" />
           <span className="logo-arabic text-2xl text-ink">لهجة</span>
         </div>
         <div className="flex items-center gap-6">
           <Link
             href="/login"
-            className="text-sm font-medium text-gray-600 hover:text-ink transition-colors"
+            className="text-sm font-medium text-gray-700 hover:text-ink transition-colors"
           >
             Sign in
           </Link>
           <Link
             href="/login"
-            className="inline-flex items-center px-4 py-2 rounded-lg bg-brand text-ink text-sm font-medium hover:bg-brand-dark transition-colors"
+            className="inline-flex items-center px-4 py-2 rounded-lg bg-brand text-ink text-sm font-medium hover:bg-brand-dark transition-colors shadow-sm"
           >
             Get started
           </Link>
@@ -46,7 +62,7 @@ export default function LandingPage() {
         <h1 className="text-5xl font-bold text-gray-900 leading-tight mb-6">
           The copy tool built for HungerStation teams
         </h1>
-        <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-10">
+        <p className="text-xl text-gray-700 max-w-2xl mx-auto mb-10">
           Generate and review product copy — in English and Arabic, in minutes.
         </p>
         <Link
@@ -55,71 +71,34 @@ export default function LandingPage() {
         >
           Start generating copy
         </Link>
+        <p className="mt-4 text-sm text-gray-600">
+          Available to all HungerStation employees. Sign in with your Google account.
+        </p>
       </section>
-      </div>{/* end animated-gradient */}
 
       {/* Features */}
-      <section id="features" className="max-w-5xl mx-auto px-8 py-20">
-        <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">
-          Everything your team needs
+      <section className="max-w-5xl mx-auto px-8 pb-24">
+        <h2 className="text-3xl font-bold text-center text-gray-900 mb-14">
+          Built for how your team works
         </h2>
-        <p className="text-center text-gray-500 mb-14 max-w-xl mx-auto">
-          From first draft to final review, Lahjah keeps your copy consistent,
-          on-brand, and culturally relevant.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {[
-            {
-              icon: "✦",
-              title: "AI-Powered Generation",
-              body: "Describe what you need — Lahjah generates polished EN + AR copy in seconds using Claude.",
-            },
-            {
-              icon: "⇄",
-              title: "Bilingual by Default",
-              body: "Every request returns English and Arabic side-by-side, with RTL support baked in.",
-            },
-            {
-              icon: "◎",
-              title: "Team Review Workflow",
-              body: "Comment, approve, or request revisions — keep your whole team aligned before shipping.",
-            },
-          ].map((f) => (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {FEATURES.map((f) => (
             <div
               key={f.title}
-              className="p-6 rounded-2xl border border-gray-100 bg-white hover:shadow-md transition-shadow"
+              className="p-6 rounded-2xl backdrop-blur-md bg-white/70 border border-white/80 hover:bg-white/85 transition-colors"
             >
-              <div className="w-10 h-10 rounded-xl bg-brand/20 text-ink flex items-center justify-center text-lg font-bold mb-4">
+              <div className="w-10 h-10 rounded-xl bg-white/80 text-ink flex items-center justify-center text-lg font-bold mb-4 shadow-sm">
                 {f.icon}
               </div>
               <h3 className="font-semibold text-gray-900 mb-2">{f.title}</h3>
-              <p className="text-sm text-gray-500 leading-relaxed">{f.body}</p>
+              <p className="text-sm text-gray-600 leading-relaxed">{f.body}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="bg-ink">
-        <div className="max-w-4xl mx-auto px-8 py-20 text-center">
-          <h2 className="text-3xl font-bold text-white mb-4">
-            Ready to ship better copy, faster?
-          </h2>
-          <p className="text-gray-400 mb-8 text-lg">
-            Join product and design teams using Lahjah to move at the speed of
-            their ideas.
-          </p>
-          <Link
-            href="/login"
-            className="inline-flex items-center px-6 py-3 rounded-xl bg-brand text-ink font-semibold text-base hover:bg-brand-dark transition-colors"
-          >
-            Get started free
-          </Link>
-        </div>
-      </section>
-
       {/* Footer */}
-      <footer className="border-t border-gray-100 px-8 py-6 flex items-center justify-between text-sm text-gray-400">
+      <footer className="mt-auto border-t border-white/30 px-8 py-6 flex items-center justify-between text-sm text-gray-600">
         <span className="logo-arabic text-ink">لهجة · Lahjah</span>
         <span>© {new Date().getFullYear()} Lahjah. All rights reserved.</span>
       </footer>
