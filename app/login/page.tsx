@@ -3,11 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
-
-const ALLOWED_DOMAIN = "hungerstation.com";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -21,14 +19,6 @@ export default function LoginPage() {
       const provider = new GoogleAuthProvider();
       const cred = await signInWithPopup(auth, provider);
       const user = cred.user;
-
-      // Domain restriction
-      const email = user.email ?? "";
-      if (!email.endsWith(`@${ALLOWED_DOMAIN}`)) {
-        await signOut(auth);
-        setError(`Only @${ALLOWED_DOMAIN} accounts are allowed.`);
-        return;
-      }
 
       // Check onboarding status
       const userSnap = await getDoc(doc(db, "users", user.uid));
@@ -63,7 +53,7 @@ export default function LoginPage() {
           Sign in to Lahjah
         </h1>
         <p className="text-sm text-gray-400 text-center mb-8">
-          Use your HungerStation Google account
+          Use your Google account to continue
         </p>
 
         {error && (
