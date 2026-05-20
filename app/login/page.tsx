@@ -7,6 +7,8 @@ import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 
+// TODO: re-add @hungerstation.com restriction after OKTA approval
+
 export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState("");
