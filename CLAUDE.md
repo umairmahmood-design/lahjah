@@ -51,17 +51,26 @@ app/
   page.tsx              # Landing page
   layout.tsx            # Root layout
   login/page.tsx        # Login page
+  chat/page.tsx         # AI copy chat (full-page, sidebar + message bubbles)
   dashboard/
     page.tsx            # Request list dashboard
     new/page.tsx        # New request creation
   api/
     generate/route.ts   # Anthropic copy generation API
+    chat/route.ts       # Anthropic streaming chat API
 lib/
   firebase.ts           # Firebase client config
 components/
   AuthGuard.tsx         # Route protection
-  DashboardNav.tsx      # Navigation
+  DashboardNav.tsx      # Navigation (includes Chat link)
 ```
+
+## Chat Feature (/chat)
+- Firestore: chats/{userId}/conversations/{convId} + /messages/{msgId}
+- Streaming responses via ReadableStream from /api/chat
+- Image upload to Firebase Storage (PNG/JPG/WEBP)
+- Language toggle EN/AR — appended as instruction to each message
+- Available to all authenticated users (Designer + Copy Team)
 
 ## Important Rules for Claude Code
 - Always use TypeScript
