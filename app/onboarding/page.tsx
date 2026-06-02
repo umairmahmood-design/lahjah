@@ -77,7 +77,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="animated-gradient min-h-screen relative overflow-hidden">
+    <div className="animated-gradient-bg relative overflow-hidden">
       <FloatingLetters />
       <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4">
       <div className="logo-arabic text-3xl text-ink mb-10">لهجة</div>

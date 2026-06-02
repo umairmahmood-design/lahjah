@@ -11,14 +11,11 @@ body {
   font-weight: 700;
 }
 
-@keyframes letter-drift {
-  0%   { transform: translateY(0)       translateX(0);    opacity: 0; }
-  8%   { opacity: 1; }
-  25%  { transform: translateY(-27vh)   translateX(12px); }
-  50%  { transform: translateY(-55vh)   translateX(-8px); }
-  75%  { transform: translateY(-82vh)   translateX(10px); }
-  92%  { opacity: 1; }
-  100% { transform: translateY(-110vh)  translateX(0);    opacity: 0; }
+@keyframes float-letter {
+  0%   { transform: translateY(0px) translateX(0px); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateY(-100vh) translateX(20px); opacity: 0; }
 }
 
 @keyframes gradient-shift {
@@ -27,15 +24,15 @@ body {
   100% { background-position: 0% 50%; }
 }
 
-.animated-gradient {
+.animated-gradient-bg {
   background: linear-gradient(
-    135deg,
+    -45deg,
     #FFFDE7,
     #87CEEF,
     #FFB3BA,
-    #D4B8F0,
-    #FFFDE7
+    #D4B8F0
   );
   background-size: 400% 400%;
   animation: gradient-shift 20s ease-in-out infinite;
+  min-height: 100vh;
 }

@@ -30,7 +30,7 @@ const FEATURES = [
 
 export default function LandingPage() {
   return (
-    <div className="animated-gradient min-h-screen relative overflow-hidden">
+    <div className="animated-gradient-bg relative overflow-hidden">
       <FloatingLetters />
       <div className="relative z-10 min-h-screen flex flex-col">
       {/* Nav */}
@@ -66,7 +66,7 @@ export default function LandingPage() {
           The copy tool built for HungerStation teams
         </h1>
         <p className="text-xl text-gray-700 max-w-2xl mx-auto mb-10">
-          Generate and review product copy, in English and Arabic, in minutes.
+          Generate and review product copy in English and Arabic, in minutes.
         </p>
         <Link
           href="/login"

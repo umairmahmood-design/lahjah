@@ -63,7 +63,7 @@ export default function FloatingLetters({ count = 22 }: { count?: number }) {
             fontWeight: 700,
             fontFamily: "var(--font-noto-kufi), sans-serif",
             color: "rgba(255, 255, 255, 0.20)",
-            animation: `letter-drift ${l.duration}s ${l.delay}s linear infinite`,
+            animation: `float-letter ${l.duration}s ${l.delay}s linear infinite`,
             userSelect: "none",
             lineHeight: 1,
             willChange: "transform, opacity",
