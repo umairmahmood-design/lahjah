@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   onAuthStateChanged,
 } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
@@ -16,7 +17,7 @@ import FloatingLetters from "@/components/FloatingLetters";
 // Use signInWithRedirect + getRedirectResult (NOT signInWithPopup)
 // Restrict to @hungerstation.com domain only
 
-type Mode = "signin" | "create";
+type Mode = "signin" | "create" | "forgot" | "success";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -112,6 +113,28 @@ export default function LoginPage() {
     }
   }
 
+  async function handleForgotPassword() {
+    if (!email) {
+      setError("Please enter your email address.");
+      return;
+    }
+    setError("");
+    setLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setMode("success");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("user-not-found") || msg.includes("invalid-credential")) {
+        setError("No account found with that email.");
+      } else {
+        setError("Failed to send reset link. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function switchMode(next: Mode) {
     setMode(next);
     setError("");
@@ -135,76 +158,159 @@ export default function LoginPage() {
         </Link>
 
         <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
-          <h1 className="text-xl font-semibold text-gray-900 mb-6 text-center">
-            {mode === "signin" ? "Sign in to Lahjah" : "Create your account"}
-          </h1>
 
-          {error && (
-            <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg mb-4 text-center">
-              {error}
-            </p>
-          )}
-
-          <div className="space-y-3 mb-4">
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) =>
-                mode === "signin" && e.key === "Enter" && handleSignIn()
-              }
-              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
-            />
-            {mode === "create" && (
-              <input
-                type="password"
-                placeholder="Confirm password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
-              />
-            )}
-          </div>
-
-          <button
-            onClick={mode === "signin" ? handleSignIn : handleCreate}
-            className="w-full py-2.5 rounded-lg bg-brand text-ink font-semibold text-sm hover:bg-brand-dark transition-colors mb-4"
-          >
-            {mode === "signin" ? "Sign in" : "Create account"}
-          </button>
-
-          <p className="text-center text-sm text-gray-400">
-            {mode === "signin" ? (
-              <>
-                No account?{" "}
-                <button
-                  onClick={() => switchMode("create")}
-                  className="text-ink font-medium hover:underline"
-                >
-                  Create one
-                </button>
-              </>
-            ) : (
-              <>
-                Already have an account?{" "}
+          {/* ── Success state ── */}
+          {mode === "success" && (
+            <>
+              <h1 className="text-xl font-semibold text-gray-900 mb-3 text-center">
+                Check your email
+              </h1>
+              <p className="text-sm text-gray-500 text-center mb-6">
+                We sent a reset link to {email}. Check your inbox.
+              </p>
+              <p className="text-center text-sm text-gray-400">
                 <button
                   onClick={() => switchMode("signin")}
                   className="text-ink font-medium hover:underline"
                 >
-                  Sign in
+                  Back to sign in
                 </button>
-              </>
-            )}
-          </p>
+              </p>
+            </>
+          )}
+
+          {/* ── Forgot password state ── */}
+          {mode === "forgot" && (
+            <>
+              <h1 className="text-xl font-semibold text-gray-900 mb-1 text-center">
+                Reset your password
+              </h1>
+              <p className="text-sm text-gray-400 text-center mb-6">
+                Enter your email and we&apos;ll send you a reset link.
+              </p>
+
+              {error && (
+                <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg mb-4 text-center">
+                  {error}
+                </p>
+              )}
+
+              <input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleForgotPassword()}
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent mb-4"
+              />
+
+              <button
+                onClick={handleForgotPassword}
+                className="w-full py-2.5 rounded-lg bg-brand text-ink font-semibold text-sm hover:bg-brand-dark transition-colors mb-4"
+              >
+                Send reset link
+              </button>
+
+              <p className="text-center text-sm text-gray-400">
+                <button
+                  onClick={() => switchMode("signin")}
+                  className="text-ink font-medium hover:underline"
+                >
+                  Back to sign in
+                </button>
+              </p>
+            </>
+          )}
+
+          {/* ── Sign in / Create account states ── */}
+          {(mode === "signin" || mode === "create") && (
+            <>
+              <h1 className="text-xl font-semibold text-gray-900 mb-6 text-center">
+                {mode === "signin" ? "Sign in to Lahjah" : "Create your account"}
+              </h1>
+
+              {error && (
+                <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg mb-4 text-center">
+                  {error}
+                </p>
+              )}
+
+              <div className="space-y-3 mb-1">
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
+                />
+                <input
+                  type="password"
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) =>
+                    mode === "signin" && e.key === "Enter" && handleSignIn()
+                  }
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
+                />
+                {mode === "create" && (
+                  <input
+                    type="password"
+                    placeholder="Confirm password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+                    className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
+                  />
+                )}
+              </div>
+
+              {mode === "signin" && (
+                <div className="flex justify-end mb-4 mt-1.5">
+                  <button
+                    onClick={() => switchMode("forgot")}
+                    className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+              )}
+
+              {mode === "create" && <div className="mb-4" />}
+
+              <button
+                onClick={mode === "signin" ? handleSignIn : handleCreate}
+                className="w-full py-2.5 rounded-lg bg-brand text-ink font-semibold text-sm hover:bg-brand-dark transition-colors mb-4"
+              >
+                {mode === "signin" ? "Sign in" : "Create account"}
+              </button>
+
+              <p className="text-center text-sm text-gray-400">
+                {mode === "signin" ? (
+                  <>
+                    No account?{" "}
+                    <button
+                      onClick={() => switchMode("create")}
+                      className="text-ink font-medium hover:underline"
+                    >
+                      Create one
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    Already have an account?{" "}
+                    <button
+                      onClick={() => switchMode("signin")}
+                      className="text-ink font-medium hover:underline"
+                    >
+                      Sign in
+                    </button>
+                  </>
+                )}
+              </p>
+            </>
+          )}
+
         </div>
       </div>
     </div>
