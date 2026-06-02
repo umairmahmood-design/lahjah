@@ -210,13 +210,15 @@ export default function GeneratePage() {
       const adminUids = await getCopyTeamUids();
 
       const message = isResubmit
-        ? `"${title}" has been revised and resubmitted for review`
+        ? `'${title}' has been resubmitted and is ready for review`
         : `New request "${title}" submitted for review`;
 
       await Promise.all(
         adminUids
           .filter((uid) => uid !== auth.currentUser?.uid)
-          .map((uid) => createNotification(uid, id, title, message))
+          .map((uid) =>
+            createNotification(uid, id, title, message, isResubmit ? "resubmitted" : undefined)
+          )
       );
 
       router.push(`/dashboard/${id}`);

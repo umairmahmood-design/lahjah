@@ -5,7 +5,8 @@ export async function createNotification(
   userId: string,
   requestId: string,
   requestTitle: string,
-  message: string
+  message: string,
+  type?: string
 ) {
   await addDoc(collection(db, "notifications"), {
     userId,
@@ -14,5 +15,6 @@ export async function createNotification(
     message,
     read: false,
     createdAt: serverTimestamp(),
+    ...(type ? { type } : {}),
   });
 }
