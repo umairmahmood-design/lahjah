@@ -14,12 +14,12 @@ const ROLES: { value: Role; label: string; description: string }[] = [
   {
     value: "designer",
     label: "Designer",
-    description: "Create copy requests, upload screenshots, and generate copy.",
+    description: "Create copy requests, generate copy, and submit for review.",
   },
   {
     value: "copy_team",
     label: "Copy Team",
-    description: "Review submitted requests, approve or request revisions.",
+    description: "Review copy requests, leave feedback, and approve submissions.",
   },
 ];
 
@@ -49,8 +49,6 @@ export default function OnboardingPage() {
       await setDoc(doc(db, "users", user.uid), {
         uid: user.uid,
         email: user.email,
-        displayName: user.displayName,
-        photoURL: user.photoURL,
         role: selected,
         createdAt: serverTimestamp(),
         onboardingCompleted: true,
@@ -83,34 +81,11 @@ export default function OnboardingPage() {
       <div className="logo-arabic text-3xl text-ink mb-10">لهجة</div>
 
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
-        {/* User info */}
-        <div className="flex items-center gap-3 mb-8">
-          {user.photoURL ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={user.photoURL}
-              alt={user.displayName ?? ""}
-              className="w-10 h-10 rounded-full"
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <div className="w-10 h-10 rounded-full bg-brand/20 flex items-center justify-center text-ink font-semibold text-sm">
-              {user.displayName?.[0] ?? user.email?.[0] ?? "?"}
-            </div>
-          )}
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">
-              {user.displayName ?? user.email}
-            </p>
-            <p className="text-xs text-gray-400 truncate">{user.email}</p>
-          </div>
-        </div>
-
         <h1 className="text-xl font-semibold text-gray-900 mb-1">
-          Welcome to Lahjah
+          Welcome to Lahjah!
         </h1>
         <p className="text-sm text-gray-400 mb-6">
-          Choose your role to get started.
+          Tell us what you do so we can set up your workspace.
         </p>
 
         <div className="space-y-3 mb-6">

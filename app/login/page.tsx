@@ -4,117 +4,209 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  GoogleAuthProvider,
-  signInWithRedirect,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   onAuthStateChanged,
 } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import FloatingLetters from "@/components/FloatingLetters";
 
-// TODO: re-add @hungerstation.com restriction after OKTA approval
+// TODO: Replace email/password with Google Sign-In after OKTA approval
+// Use signInWithRedirect + getRedirectResult (NOT signInWithPopup)
+// Restrict to @hungerstation.com domain only
+
+type Mode = "signin" | "create";
 
 export default function LoginPage() {
   const router = useRouter();
+  const [mode, setMode] = useState<Mode>("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true); // true on mount — waiting for auth state
+  const [loading, setLoading] = useState(true);
 
+  // Redirect already-signed-in users
   useEffect(() => {
-    // Firebase automatically processes the pending redirect result and fires
-    // onAuthStateChanged with the user. This is more reliable than
-    // getRedirectResult, which can return null in Next.js App Router.
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         setLoading(false);
         return;
       }
-
       try {
         const userSnap = await getDoc(doc(db, "users", user.uid));
-        // userSnap.exists() === false is expected for brand-new users — route to onboarding
         if (userSnap.exists() && userSnap.data().onboardingCompleted === true) {
           router.push("/dashboard");
         } else {
           router.push("/onboarding");
         }
       } catch (err) {
-        console.error("[login] Firestore error reading users doc:", err);
-        setError("Failed to load your profile. Please try again.");
+        console.error("[login] Firestore error:", err);
         setLoading(false);
       }
     });
-
     return unsub;
   }, [router]);
 
-  async function handleGoogleSignIn() {
+  async function handleSignIn() {
+    if (!email || !password) {
+      setError("Please enter your email and password.");
+      return;
+    }
     setError("");
     setLoading(true);
-    const provider = new GoogleAuthProvider();
-    await signInWithRedirect(auth, provider);
-    // Page navigates away to Google — no further code runs here
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      // onAuthStateChanged handles the redirect
+    } catch (err: unknown) {
+      setLoading(false);
+      const msg = err instanceof Error ? err.message : "";
+      if (
+        msg.includes("user-not-found") ||
+        msg.includes("wrong-password") ||
+        msg.includes("invalid-credential")
+      ) {
+        setError("Incorrect email or password.");
+      } else {
+        setError("Sign in failed. Please try again.");
+      }
+    }
+  }
+
+  async function handleCreate() {
+    if (!email || !password || !confirmPassword) {
+      setError("Please fill in all fields.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+    setError("");
+    setLoading(true);
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await setDoc(doc(db, "users", cred.user.uid), {
+        uid: cred.user.uid,
+        email: cred.user.email,
+        role: null,
+        createdAt: serverTimestamp(),
+        onboardingCompleted: false,
+      });
+      router.push("/onboarding");
+    } catch (err: unknown) {
+      setLoading(false);
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("email-already-in-use")) {
+        setError("An account with this email already exists.");
+      } else if (msg.includes("invalid-email")) {
+        setError("Please enter a valid email address.");
+      } else {
+        setError("Failed to create account. Please try again.");
+      }
+    }
+  }
+
+  function switchMode(next: Mode) {
+    setMode(next);
+    setError("");
+    setConfirmPassword("");
+  }
+
+  if (loading) {
+    return (
+      <div className="animated-gradient-bg relative overflow-hidden flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-ink border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
   }
 
   return (
     <div className="animated-gradient-bg relative overflow-hidden">
       <FloatingLetters />
       <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4">
-      <Link href="/" className="logo-arabic text-3xl text-ink mb-10">
-        لهجة
-      </Link>
+        <Link href="/" className="logo-arabic text-3xl text-ink mb-10">
+          لهجة
+        </Link>
 
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
-        <h1 className="text-xl font-semibold text-gray-900 mb-1 text-center">
-          Sign in to Lahjah
-        </h1>
-        <p className="text-sm text-gray-400 text-center mb-8">
-          Use your Google account to continue
-        </p>
+        <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
+          <h1 className="text-xl font-semibold text-gray-900 mb-6 text-center">
+            {mode === "signin" ? "Sign in to Lahjah" : "Create your account"}
+          </h1>
 
-        {error && (
-          <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg mb-4 text-center">
-            {error}
-          </p>
-        )}
-
-        <button
-          onClick={handleGoogleSignIn}
-          disabled={loading}
-          className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-lg border border-gray-200 bg-white text-gray-700 font-medium text-sm hover:bg-gray-50 hover:border-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-        >
-          {loading ? (
-            <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-          ) : (
-            <GoogleIcon />
+          {error && (
+            <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg mb-4 text-center">
+              {error}
+            </p>
           )}
-          {loading ? "Signing in…" : "Continue with Google"}
-        </button>
+
+          <div className="space-y-3 mb-4">
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) =>
+                mode === "signin" && e.key === "Enter" && handleSignIn()
+              }
+              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
+            />
+            {mode === "create" && (
+              <input
+                type="password"
+                placeholder="Confirm password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
+              />
+            )}
+          </div>
+
+          <button
+            onClick={mode === "signin" ? handleSignIn : handleCreate}
+            className="w-full py-2.5 rounded-lg bg-brand text-ink font-semibold text-sm hover:bg-brand-dark transition-colors mb-4"
+          >
+            {mode === "signin" ? "Sign in" : "Create account"}
+          </button>
+
+          <p className="text-center text-sm text-gray-400">
+            {mode === "signin" ? (
+              <>
+                No account?{" "}
+                <button
+                  onClick={() => switchMode("create")}
+                  className="text-ink font-medium hover:underline"
+                >
+                  Create one
+                </button>
+              </>
+            ) : (
+              <>
+                Already have an account?{" "}
+                <button
+                  onClick={() => switchMode("signin")}
+                  className="text-ink font-medium hover:underline"
+                >
+                  Sign in
+                </button>
+              </>
+            )}
+          </p>
+        </div>
       </div>
-
-      </div>{/* end z-10 */}
     </div>
-  );
-}
-
-function GoogleIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
-      <path
-        d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z"
-        fill="#4285F4"
-      />
-      <path
-        d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18Z"
-        fill="#34A853"
-      />
-      <path
-        d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332Z"
-        fill="#FBBC05"
-      />
-      <path
-        d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58Z"
-        fill="#EA4335"
-      />
-    </svg>
   );
 }

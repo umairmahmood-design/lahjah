@@ -8,20 +8,20 @@ Lahjah is a web app that helps product and design teams generate on-brand UI cop
 - **Styling**: Tailwind CSS (primary brand color: #1B4FD8)
 - **Database**: Firebase Firestore
 - **File Storage**: Firebase Storage
-- **Auth**: Firebase Auth (Google OAuth — @hungerstation.com only)
+- **Auth**: Firebase Auth (email/password — Google OAuth pending OKTA approval)
 - **AI**: Anthropic API (claude-sonnet-4-20250514)
 - **Hosting**: Vercel (auto-deploys on GitHub push)
 
 ## Auth Flow
-1. `/login` — "Continue with Google" button (no email/password)
-2. Domain check — only @hungerstation.com accounts allowed; others are signed out with an error
-3. If `users/{uid}.onboardingCompleted` is missing or false → redirect to `/onboarding`
-4. `/onboarding` — role selection (Designer or Copy Team); saves full profile to Firestore, then redirects to `/dashboard`
+1. `/login` — email/password sign-in, with toggle to create account mode
+2. Create account: email + password + confirm password → creates Firebase Auth user + Firestore profile → redirect to `/onboarding`
+3. Sign in: email + password → check Firestore → if `onboardingCompleted` true → `/dashboard`, else → `/onboarding`
+4. `/onboarding` — role selection (Designer or Copy Team); saves role to Firestore, then redirects to `/dashboard`
 5. `AuthGuard` — checks auth state AND `onboardingCompleted`; redirects unauthenticated users to `/login` and users without completed onboarding to `/onboarding`
 
 Firestore `users/{uid}` document shape:
 ```
-{ uid, email, displayName, photoURL, role, createdAt, onboardingCompleted: true }
+{ uid, email, role, createdAt, onboardingCompleted: true }
 ```
 
 ## User Roles
