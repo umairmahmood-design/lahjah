@@ -12,7 +12,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
-import { isCopyTeamUser } from "@/lib/roles";
+import { isCopyTeamUser, getUserDisplayName } from "@/lib/roles";
 import DashboardNav from "@/components/DashboardNav";
 import { STATUS_CONFIG, type RequestStatus } from "@/lib/status";
 import { createNotification } from "@/lib/notifications";
@@ -52,6 +52,7 @@ interface CopyRequest {
   stringReviews?: StringReview[];
   // legacy field — kept for display of old requests
   revisionNotes?: string;
+  reviewedBy?: string;
 }
 
 const TYPE_COLORS: Record<string, string> = {
@@ -83,6 +84,10 @@ export default function RequestDetailPage() {
   // Per-string Copy Team reply state
   const [copyTeamReplies, setCopyTeamReplies] = useState<Record<string, string>>({});
   const [savingCopyTeamReply, setSavingCopyTeamReply] = useState<string | null>(null);
+
+  // Display names for raised-by / reviewed-by
+  const [createdByName, setCreatedByName] = useState<string | null>(null);
+  const [reviewedByName, setReviewedByName] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -121,6 +126,14 @@ export default function RequestDetailPage() {
         setStringReviews(initial);
         setDesignerReplies(initialReplies);
         setCopyTeamReplies(initialCopyTeamReplies);
+
+        // Fetch display names
+        if (data.createdBy) {
+          getUserDisplayName(data.createdBy).then(setCreatedByName);
+        }
+        if (data.reviewedBy) {
+          getUserDisplayName(data.reviewedBy).then(setReviewedByName);
+        }
       } catch {
         setError("Failed to load request.");
       } finally {
@@ -286,6 +299,17 @@ export default function RequestDetailPage() {
         {request.domain && ` · ${request.domain}`}
         {request.targetAudience && ` · ${request.targetAudience}`}
       </p>
+      <div className="flex items-center gap-3 mt-1 flex-wrap">
+        {createdByName && (
+          <span className="text-xs text-gray-400">Raised by: <span className="text-gray-600">{createdByName}</span></span>
+        )}
+        {reviewedByName && (
+          <>
+            {createdByName && <span className="text-xs text-gray-300">·</span>}
+            <span className="text-xs text-gray-400">Reviewed by: <span className="text-gray-600">{reviewedByName}</span></span>
+          </>
+        )}
+      </div>
     </div>
   );
 

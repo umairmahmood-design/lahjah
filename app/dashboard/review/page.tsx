@@ -12,7 +12,7 @@ import {
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
-import { isCopyTeamUser } from "@/lib/roles";
+import { isCopyTeamUser, getUserDisplayName } from "@/lib/roles";
 import DashboardNav from "@/components/DashboardNav";
 import { STATUS_CONFIG, type RequestStatus } from "@/lib/status";
 import { useRouter } from "next/navigation";
@@ -24,6 +24,7 @@ interface CopyRequest {
   createdAt: Timestamp;
   tone?: string;
   screenshotURLs?: string[];
+  createdBy: string;
 }
 
 const REVIEW_STATUSES: RequestStatus[] = ["submitted", "in_review", "approved", "changes_requested"];
@@ -33,6 +34,7 @@ export default function ReviewQueuePage() {
   const [requests, setRequests] = useState<CopyRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [submitterNames, setSubmitterNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
@@ -54,6 +56,12 @@ export default function ReviewQueuePage() {
           .sort((a, b) => (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0));
         setRequests(docs);
         setLoading(false);
+        const creatorUids = Array.from(new Set(docs.map((d) => d.createdBy).filter(Boolean)));
+        if (creatorUids.length > 0) {
+          Promise.all(creatorUids.map(async (u) => [u, await getUserDisplayName(u)] as const)).then((pairs) =>
+            setSubmitterNames(Object.fromEntries(pairs))
+          );
+        }
       });
 
       return unsubSnap;
@@ -116,7 +124,7 @@ export default function ReviewQueuePage() {
                 </p>
                 <div className="space-y-2">
                   {pending.map((req) => (
-                    <RequestRow key={req.id} req={req} />
+                    <RequestRow key={req.id} req={req} submitterName={submitterNames[req.createdBy]} />
                   ))}
                 </div>
               </section>
@@ -129,7 +137,7 @@ export default function ReviewQueuePage() {
                 </p>
                 <div className="space-y-2">
                   {resolved.map((req) => (
-                    <RequestRow key={req.id} req={req} />
+                    <RequestRow key={req.id} req={req} submitterName={submitterNames[req.createdBy]} />
                   ))}
                 </div>
               </section>
@@ -141,7 +149,7 @@ export default function ReviewQueuePage() {
   );
 }
 
-function RequestRow({ req }: { req: CopyRequest }) {
+function RequestRow({ req, submitterName }: { req: CopyRequest; submitterName?: string }) {
   const cfg = STATUS_CONFIG[req.status] ?? STATUS_CONFIG.draft;
   const shown = req.screenshotURLs?.slice(0, 4) ?? [];
   const extra = (req.screenshotURLs?.length ?? 0) - 4;
@@ -169,6 +177,12 @@ function RequestRow({ req }: { req: CopyRequest }) {
               <>
                 <span className="text-xs text-gray-300">·</span>
                 <span className="text-xs text-gray-400 capitalize">{req.tone}</span>
+              </>
+            )}
+            {submitterName && (
+              <>
+                <span className="text-xs text-gray-300">·</span>
+                <span className="text-xs text-gray-400">Raised by: {submitterName}</span>
               </>
             )}
           </div>

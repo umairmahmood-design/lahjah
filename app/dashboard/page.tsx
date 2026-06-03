@@ -18,6 +18,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth, db, storage } from "@/lib/firebase";
 import DashboardNav from "@/components/DashboardNav";
 import { STATUS_CONFIG, type RequestStatus } from "@/lib/status";
+import { getUserDisplayName } from "@/lib/roles";
 
 interface CopyRequest {
   id: string;
@@ -26,6 +27,7 @@ interface CopyRequest {
   createdAt: Timestamp;
   tone?: string;
   screenshotURLs?: string[];
+  reviewedBy?: string;
 }
 
 export default function DashboardPage() {
@@ -35,6 +37,7 @@ export default function DashboardPage() {
   const [uid, setUid] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [reviewerNames, setReviewerNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -66,6 +69,13 @@ export default function DashboardPage() {
           });
         setRequests(docs);
         setLoading(false);
+        // Fetch reviewer display names for any reviewed requests
+        const reviewerUids = Array.from(new Set(docs.map((d) => d.reviewedBy).filter((uid): uid is string => !!uid)));
+        if (reviewerUids.length > 0) {
+          Promise.all(reviewerUids.map(async (u) => [u, await getUserDisplayName(u)] as const)).then((pairs) =>
+            setReviewerNames(Object.fromEntries(pairs))
+          );
+        }
       },
       (err) => {
         console.error("[dashboard] Firestore error:", err);
@@ -195,6 +205,12 @@ export default function DashboardPage() {
                             <>
                               <span className="text-xs text-gray-300">·</span>
                               <span className="text-xs text-gray-400 capitalize">{req.tone}</span>
+                            </>
+                          )}
+                          {req.reviewedBy && reviewerNames[req.reviewedBy] && (
+                            <>
+                              <span className="text-xs text-gray-300">·</span>
+                              <span className="text-xs text-gray-400">Reviewed by: {reviewerNames[req.reviewedBy]}</span>
                             </>
                           )}
                         </div>

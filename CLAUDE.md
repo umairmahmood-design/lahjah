@@ -68,9 +68,23 @@ components/
 ## Chat Feature (/chat)
 - Firestore: chats/{userId}/conversations/{convId} + /messages/{msgId}
 - Streaming responses via ReadableStream from /api/chat
-- Image upload to Firebase Storage (PNG/JPG/WEBP)
+- Image upload to Firebase Storage (PNG/JPG/WEBP) — via paperclip, drag-and-drop, or Cmd+V paste
 - Language toggle EN/AR — appended as instruction to each message
 - Available to all authenticated users (Designer + Copy Team)
+
+## New Request Page (/dashboard/new) — Generation UX
+- Drag-and-drop or paste (Cmd+V) to attach screenshots anywhere on the page
+- Copy icon on each generated suggestion → clipboard, "✓" confirmation for 2s
+- Regenerate preserves previous suggestions as a "Previous suggestion" card
+- "Write my own" per annotation: custom EN/AR text inputs, submitted as-is
+- Checkboxes on each copy result card + "Select all" → bulk "Submit selected for review" bar
+- `reviewedBy` uid saved to Firestore when Copy Team submits a review
+
+## Requester / Assignee Display
+- `lib/roles.ts` exports `getUserDisplayName(uid)` → displayName ?? email ?? uid
+- Designer dashboard shows "Reviewed by: [name]" when a reviewer exists
+- Copy Team review queue shows "Raised by: [name]" on each request card
+- Request detail page header shows both "Raised by" and "Reviewed by"
 
 ## Important Rules for Claude Code
 - Always use TypeScript

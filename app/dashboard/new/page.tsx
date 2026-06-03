@@ -134,6 +134,22 @@ export default function NewRequestPage() {
   const [generated, setGenerated] = useState(false);
   const [generating, setGenerating] = useState(false);
 
+  // Feature 2: Copy button
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  // Feature 3: Previous results + custom copy
+  const [previousResults, setPreviousResults] = useState<Record<string, CopyResult>>({});
+  const [showCustom, setShowCustom] = useState<Set<string>>(new Set());
+  const [customCopy, setCustomCopy] = useState<Record<string, { en: string; ar: string }>>({});
+
+  // Feature 4: Multi-select
+  const [selectedStrings, setSelectedStrings] = useState<Set<string>>(new Set());
+
+  // Feature 1: Drag & drop
+  const [isDraggingFiles, setIsDraggingFiles] = useState(false);
+  const [fileDropError, setFileDropError] = useState<string | null>(null);
+  const fileDragCounterRef = useRef(0);
+
   // Save state
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -221,6 +237,51 @@ export default function NewRequestPage() {
       return updated;
     });
     setActiveScreenIdx((i) => Math.max(0, Math.min(i, screenshotUrls.length - 2)));
+  }
+
+  // ── Drag & drop / paste helpers (Feature 1) ─────────────────────────
+  function attachDroppedFiles(droppedFiles: File[]) {
+    const ACCEPTED = ["image/png", "image/jpeg", "image/webp"];
+    const valid = droppedFiles.filter((f) => ACCEPTED.includes(f.type));
+    if (valid.length < droppedFiles.length) {
+      setFileDropError("Only image files are supported");
+      setTimeout(() => setFileDropError(null), 3000);
+    }
+    if (!valid.length) return;
+    const startIdx = files.length;
+    const newUploads: UploadedFile[] = valid.map((file) => ({
+      file,
+      previewUrl: URL.createObjectURL(file),
+      progress: 0,
+      downloadUrl: null,
+      error: null,
+    }));
+    setFiles((prev) => [...prev, ...newUploads]);
+    valid.forEach((f, i) => uploadFile(f, startIdx + i));
+  }
+
+  function handleFileDragEnter(e: React.DragEvent) {
+    e.preventDefault();
+    fileDragCounterRef.current += 1;
+    if (fileDragCounterRef.current === 1) setIsDraggingFiles(true);
+  }
+
+  function handleFileDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    fileDragCounterRef.current -= 1;
+    if (fileDragCounterRef.current === 0) setIsDraggingFiles(false);
+  }
+
+  function handleFileDragOver(e: React.DragEvent) {
+    e.preventDefault();
+  }
+
+  function handleFileDrop(e: React.DragEvent) {
+    e.preventDefault();
+    fileDragCounterRef.current = 0;
+    setIsDraggingFiles(false);
+    const dropped = Array.from(e.dataTransfer.files);
+    if (dropped.length) attachDroppedFiles(dropped);
   }
 
   // ── Competitor screenshot upload ─────────────────────────────────────
@@ -431,6 +492,23 @@ export default function NewRequestPage() {
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
   }, [handleGlobalKeyDown]);
 
+  // Paste images anywhere on page (Feature 1)
+  useEffect(() => {
+    function handleWindowPaste(e: ClipboardEvent) {
+      const items = Array.from(e.clipboardData?.items ?? []);
+      const imageFiles = items
+        .filter((i) => i.kind === "file" && i.type.startsWith("image/"))
+        .map((i) => i.getAsFile())
+        .filter((f): f is File => f !== null);
+      if (!imageFiles.length) return;
+      e.preventDefault();
+      attachDroppedFiles(imageFiles);
+    }
+    window.addEventListener("paste", handleWindowPaste);
+    return () => window.removeEventListener("paste", handleWindowPaste);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [files]);
+
   function confirmAnnotation() {
     if (!pendingRect || !newLabel.trim()) return;
     const newAnn: Annotation = {
@@ -451,6 +529,11 @@ export default function NewRequestPage() {
 
   // ── Generation ───────────────────────────────────────────────────────
   async function generateOne(ann: Annotation) {
+    // Feature 3: Save current result as previous before overwriting
+    const current = results[ann.id];
+    if (current?.status === "done") {
+      setPreviousResults((prev) => ({ ...prev, [ann.id]: current }));
+    }
     setResults((prev) => ({ ...prev, [ann.id]: { status: "loading", en: [], ar: [] } }));
     setSelections((prev) => ({ ...prev, [ann.id]: { enIdx: 0, arIdx: 0 } }));
     const description = `${ann.label} (${ann.type})`;
@@ -488,6 +571,80 @@ export default function NewRequestPage() {
     setGenerating(false);
   }
 
+  // ── Copy to clipboard (Feature 2) ────────────────────────────────────
+  async function copyText(text: string, key: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 2000);
+    } catch {}
+  }
+
+  // ── Multi-select helpers (Feature 4) ─────────────────────────────────
+  function toggleStringSelection(id: string) {
+    setSelectedStrings((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  async function submitSelected() {
+    setError("");
+    if (!title.trim()) { setError("Request title is required."); return; }
+    if (!domain) { setError("Please select a domain before submitting."); return; }
+    if (!targetAudience) { setError("Please select a target audience before submitting."); return; }
+    if (!publishingDeadline) { setError("Publishing deadline is required before submitting."); return; }
+    if (!context.trim()) { setError("Feature context is required before submitting."); return; }
+    if (!problemStatement.trim()) { setError("Problem statement is required before submitting."); return; }
+    if (selectedStrings.size === 0) return;
+    if (uploadsInProgress) { setError("Please wait for uploads to finish."); return; }
+    const uid = auth.currentUser?.uid;
+    if (!uid) { setError("You must be signed in."); return; }
+    setSaving(true);
+    try {
+      const screenshotURLs = files.filter((f) => f.downloadUrl).map((f) => f.downloadUrl as string);
+      const finalTerms = termInput.trim() && !lockedTerms.includes(termInput.trim())
+        ? [...lockedTerms, termInput.trim()] : lockedTerms;
+      const copySelections: Record<string, { en: string; ar: string }> = {};
+      for (const ann of annotations) {
+        if (!selectedStrings.has(ann.id)) continue;
+        const custom = customCopy[ann.id];
+        if (custom?.en || custom?.ar) {
+          copySelections[ann.id] = { en: custom.en ?? "", ar: custom.ar ?? "" };
+        } else {
+          const result = results[ann.id];
+          const sel = selections[ann.id];
+          if (result?.status === "done") {
+            copySelections[ann.id] = {
+              en: result.en[sel?.enIdx ?? 0] ?? "",
+              ar: result.ar[sel?.arIdx ?? 0] ?? "",
+            };
+          }
+        }
+      }
+      const docRef = await addDoc(collection(db, "copyRequests"), {
+        title: title.trim(), domain, targetAudience, publishingDeadline,
+        context: context.trim(), problemStatement: problemStatement.trim(),
+        competitorResearch: competitorResearch.trim(),
+        competitorScreenshotURLs: competitorFiles.filter((f) => f.downloadUrl).map((f) => f.downloadUrl as string),
+        tone, lockedTerms: finalTerms, screenshotURLs, annotations, copySelections,
+        status: "submitted", createdBy: uid,
+        createdAt: serverTimestamp(), submittedAt: serverTimestamp(),
+      });
+      const adminUids = await getCopyTeamUids();
+      await Promise.all(
+        adminUids.filter((adminUid) => adminUid !== uid).map((adminUid) =>
+          createNotification(adminUid, docRef.id, title.trim(), `New request "${title.trim()}" submitted for review`)
+        )
+      );
+      router.push(`/dashboard/${docRef.id}`);
+    } catch {
+      setError("Failed to save. Please try again.");
+      setSaving(false);
+    }
+  }
+
   // ── Save ─────────────────────────────────────────────────────────────
   async function save(status: "draft" | "submitted") {
     setError("");
@@ -513,16 +670,21 @@ export default function NewRequestPage() {
           ? [...lockedTerms, termInput.trim()]
           : lockedTerms;
 
-      // Build copy selections
+      // Build copy selections (Feature 3: prefer custom copy)
       const copySelections: Record<string, { en: string; ar: string }> = {};
       for (const ann of annotations) {
-        const result = results[ann.id];
-        const sel = selections[ann.id];
-        if (result?.status === "done") {
-          copySelections[ann.id] = {
-            en: result.en[sel?.enIdx ?? 0] ?? "",
-            ar: result.ar[sel?.arIdx ?? 0] ?? "",
-          };
+        const custom = customCopy[ann.id];
+        if (custom?.en || custom?.ar) {
+          copySelections[ann.id] = { en: custom.en ?? "", ar: custom.ar ?? "" };
+        } else {
+          const result = results[ann.id];
+          const sel = selections[ann.id];
+          if (result?.status === "done") {
+            copySelections[ann.id] = {
+              en: result.en[sel?.enIdx ?? 0] ?? "",
+              ar: result.ar[sel?.arIdx ?? 0] ?? "",
+            };
+          }
         }
       }
 
@@ -830,7 +992,19 @@ export default function NewRequestPage() {
           <div className="w-full lg:flex-1 flex flex-col gap-4">
 
             {/* Screenshots upload */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-5">
+            <div
+              className="bg-white rounded-2xl border border-gray-100 p-5 relative"
+              onDragEnter={handleFileDragEnter}
+              onDragLeave={handleFileDragLeave}
+              onDragOver={handleFileDragOver}
+              onDrop={handleFileDrop}
+            >
+              {/* Drop error toast */}
+              {fileDropError && (
+                <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 px-3 py-1.5 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700 shadow-sm whitespace-nowrap">
+                  {fileDropError}
+                </div>
+              )}
               <div className="flex items-center justify-between mb-3">
                 <label className="text-sm font-medium text-gray-700">Screenshots</label>
                 <button
@@ -853,11 +1027,17 @@ export default function NewRequestPage() {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full border-2 border-dashed border-gray-200 rounded-xl py-14 flex flex-col items-center gap-2 hover:border-ink/20 hover:bg-brand/10 transition-all group"
+                  className={`w-full border-2 border-dashed rounded-xl py-14 flex flex-col items-center gap-2 transition-all group ${
+                    isDraggingFiles
+                      ? "border-brand bg-blue-50/60"
+                      : "border-gray-200 hover:border-ink/20 hover:bg-brand/10"
+                  }`}
                 >
-                  <span className="text-3xl text-gray-300 group-hover:text-ink/40 transition-colors">⬆</span>
-                  <span className="text-sm text-gray-400">Click to upload images</span>
-                  <span className="text-xs text-gray-300">PNG, JPG, WebP</span>
+                  <span className={`text-3xl transition-colors ${isDraggingFiles ? "text-brand" : "text-gray-300 group-hover:text-ink/40"}`}>⬆</span>
+                  <span className={`text-sm ${isDraggingFiles ? "text-brand font-semibold" : "text-gray-400"}`}>
+                    {isDraggingFiles ? "Drop images here" : "Click to upload images"}
+                  </span>
+                  {!isDraggingFiles && <span className="text-xs text-gray-300">PNG, JPG, WebP — or drag and drop</span>}
                 </button>
               ) : (
                 <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3">
@@ -905,6 +1085,12 @@ export default function NewRequestPage() {
                   >
                     +
                   </button>
+                </div>
+              )}
+              {/* Dragging overlay when files already exist */}
+              {isDraggingFiles && files.length > 0 && (
+                <div className="absolute inset-0 rounded-2xl border-2 border-dashed border-brand bg-blue-50/60 flex items-center justify-center pointer-events-none z-10">
+                  <span className="text-sm font-semibold text-brand">Drop images here</span>
                 </div>
               )}
             </div>
@@ -1115,6 +1301,27 @@ export default function NewRequestPage() {
         {/* ── Below both columns — generation results (full width) ── */}
         {generated && annotations.length > 0 && (
           <div className="mt-6 space-y-4">
+            {/* Select all row (Feature 4) */}
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-semibold text-gray-700">Generated copy</p>
+              <div className="flex items-center gap-3">
+                {annotations.filter(a => results[a.id]?.status === "done").length > 0 && (
+                  <button
+                    onClick={() => {
+                      const doneIds = annotations.filter(a => results[a.id]?.status === "done").map(a => a.id);
+                      const allSelected = doneIds.every(id => selectedStrings.has(id));
+                      if (allSelected) setSelectedStrings(new Set());
+                      else setSelectedStrings(new Set(doneIds));
+                    }}
+                    className="text-xs text-gray-500 hover:text-ink transition-colors"
+                  >
+                    {annotations.filter(a => results[a.id]?.status === "done").every(a => selectedStrings.has(a.id))
+                      ? "Deselect all"
+                      : "Select all"}
+                  </button>
+                )}
+              </div>
+            </div>
             {annotations.map((ann) => {
                   const result = results[ann.id];
                   const sel = selections[ann.id] ?? { enIdx: 0, arIdx: 0 };
@@ -1130,6 +1337,14 @@ export default function NewRequestPage() {
                       {/* Card header */}
                       <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50 gap-3">
                         <div className="flex items-center gap-2.5 min-w-0">
+                          {/* Checkbox (Feature 4) */}
+                          <input
+                            type="checkbox"
+                            checked={selectedStrings.has(ann.id)}
+                            onChange={() => toggleStringSelection(ann.id)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-4 h-4 rounded border-gray-300 text-brand focus:ring-brand shrink-0"
+                          />
                           <span
                             className="w-2.5 h-2.5 rounded-sm shrink-0"
                             style={{ backgroundColor: TYPE_COLORS[ann.type] }}
@@ -1189,6 +1404,7 @@ export default function NewRequestPage() {
 
                       {/* Suggestions */}
                       {isDone && (
+                        <>
                         <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
                           {/* English */}
                           <div className="px-5 py-5">
@@ -1197,25 +1413,38 @@ export default function NewRequestPage() {
                               {result.en.map((suggestion, i) => {
                                 const isSelected = sel.enIdx === i;
                                 return (
-                                  <button
-                                    key={i}
-                                    onClick={() =>
-                                      setSelections((prev) => ({
-                                        ...prev,
-                                        [ann.id]: { ...prev[ann.id], enIdx: i },
-                                      }))
-                                    }
-                                    className={`w-full text-left px-4 py-3 rounded-xl border text-sm leading-relaxed transition-all ${
-                                      isSelected
-                                        ? "border-ink bg-gray-50 text-ink font-medium"
-                                        : "border-gray-100 text-gray-700 hover:border-gray-200 hover:bg-gray-50"
-                                    }`}
-                                  >
-                                    <span className="text-[10px] font-semibold uppercase tracking-wide opacity-50 block mb-0.5">
-                                      Option {i + 1}
-                                    </span>
-                                    {suggestion}
-                                  </button>
+                                  <div key={i} className="relative group/item">
+                                    <button
+                                      onClick={() =>
+                                        setSelections((prev) => ({
+                                          ...prev,
+                                          [ann.id]: { ...prev[ann.id], enIdx: i },
+                                        }))
+                                      }
+                                      className={`w-full text-left px-4 py-3 rounded-xl border text-sm leading-relaxed transition-all pr-10 ${
+                                        isSelected
+                                          ? "border-ink bg-gray-50 text-ink font-medium"
+                                          : "border-gray-100 text-gray-700 hover:border-gray-200 hover:bg-gray-50"
+                                      }`}
+                                    >
+                                      <span className="text-[10px] font-semibold uppercase tracking-wide opacity-50 block mb-0.5">
+                                        Option {i + 1}
+                                      </span>
+                                      {suggestion}
+                                    </button>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); copyText(suggestion, `${ann.id}-en-${i}`); }}
+                                      className="absolute top-2 right-2 p-1 rounded-md bg-white border border-gray-200 text-gray-400 hover:text-gray-700 hover:border-gray-300 opacity-0 group-hover/item:opacity-100 transition-opacity text-[10px] font-semibold"
+                                      title="Copy"
+                                    >
+                                      {copiedKey === `${ann.id}-en-${i}` ? "✓" : (
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                        </svg>
+                                      )}
+                                    </button>
+                                  </div>
                                 );
                               })}
                             </div>
@@ -1228,34 +1457,113 @@ export default function NewRequestPage() {
                               {result.ar.map((suggestion, i) => {
                                 const isSelected = sel.arIdx === i;
                                 return (
-                                  <button
-                                    key={i}
-                                    dir="rtl"
-                                    onClick={() =>
-                                      setSelections((prev) => ({
-                                        ...prev,
-                                        [ann.id]: { ...prev[ann.id], arIdx: i },
-                                      }))
-                                    }
-                                    className={`w-full text-right px-4 py-3 rounded-xl border text-sm leading-relaxed transition-all ${
-                                      isSelected
-                                        ? "border-ink bg-gray-50 text-ink font-medium"
-                                        : "border-gray-100 text-gray-700 hover:border-gray-200 hover:bg-gray-50"
-                                    }`}
-                                  >
-                                    <span
-                                      className="text-[10px] font-semibold uppercase tracking-wide opacity-50 block mb-0.5"
-                                      dir="ltr"
+                                  <div key={i} className="relative group/item">
+                                    <button
+                                      dir="rtl"
+                                      onClick={() =>
+                                        setSelections((prev) => ({
+                                          ...prev,
+                                          [ann.id]: { ...prev[ann.id], arIdx: i },
+                                        }))
+                                      }
+                                      className={`w-full text-right px-4 py-3 rounded-xl border text-sm leading-relaxed transition-all ${
+                                        isSelected
+                                          ? "border-ink bg-gray-50 text-ink font-medium"
+                                          : "border-gray-100 text-gray-700 hover:border-gray-200 hover:bg-gray-50"
+                                      }`}
                                     >
-                                      Option {i + 1}
-                                    </span>
-                                    {suggestion}
-                                  </button>
+                                      <span
+                                        className="text-[10px] font-semibold uppercase tracking-wide opacity-50 block mb-0.5"
+                                        dir="ltr"
+                                      >
+                                        Option {i + 1}
+                                      </span>
+                                      {suggestion}
+                                    </button>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); copyText(suggestion, `${ann.id}-ar-${i}`); }}
+                                      className="absolute top-2 right-2 p-1 rounded-md bg-white border border-gray-200 text-gray-400 hover:text-gray-700 hover:border-gray-300 opacity-0 group-hover/item:opacity-100 transition-opacity text-[10px] font-semibold"
+                                      title="Copy"
+                                    >
+                                      {copiedKey === `${ann.id}-ar-${i}` ? "✓" : (
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                        </svg>
+                                      )}
+                                    </button>
+                                  </div>
                                 );
                               })}
                             </div>
                           </div>
                         </div>
+
+                        {/* Previous suggestion (Feature 3) */}
+                        {previousResults[ann.id]?.status === "done" && (
+                          <div className="px-5 pb-4 border-t border-gray-50">
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mt-3 mb-2">Previous suggestion</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div className="px-4 py-3 rounded-xl border border-dashed border-gray-200 bg-gray-50/50 text-sm text-gray-500 leading-relaxed">
+                                <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 block mb-0.5">English</span>
+                                {previousResults[ann.id].en[selections[ann.id]?.enIdx ?? 0] ?? previousResults[ann.id].en[0]}
+                              </div>
+                              <div className="px-4 py-3 rounded-xl border border-dashed border-gray-200 bg-gray-50/50 text-sm text-gray-500 leading-relaxed text-right" dir="rtl">
+                                <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 block mb-0.5" dir="ltr">Arabic</span>
+                                {previousResults[ann.id].ar[selections[ann.id]?.arIdx ?? 0] ?? previousResults[ann.id].ar[0]}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Write my own (Feature 3) */}
+                        <div className="px-5 pb-4 border-t border-gray-50">
+                          {!showCustom.has(ann.id) ? (
+                            <button
+                              onClick={() => setShowCustom((prev) => { const next = new Set(prev); next.add(ann.id); return next; })}
+                              className="mt-3 text-xs text-gray-400 hover:text-ink transition-colors underline underline-offset-2"
+                            >
+                              + Write my own copy instead
+                            </button>
+                          ) : (
+                            <div className="mt-3 space-y-2">
+                              <p className="text-xs font-semibold text-gray-500">Write your own copy</p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                  <label className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 block mb-1">English</label>
+                                  <textarea
+                                    rows={2}
+                                    value={customCopy[ann.id]?.en ?? ""}
+                                    onChange={(e) => setCustomCopy((prev) => ({ ...prev, [ann.id]: { ...prev[ann.id], en: e.target.value } }))}
+                                    placeholder="Type your own English copy…"
+                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition resize-none"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 block mb-1">Arabic</label>
+                                  <textarea
+                                    rows={2}
+                                    dir="rtl"
+                                    value={customCopy[ann.id]?.ar ?? ""}
+                                    onChange={(e) => setCustomCopy((prev) => ({ ...prev, [ann.id]: { ...prev[ann.id], ar: e.target.value } }))}
+                                    placeholder="اكتب نصك العربي هنا…"
+                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition resize-none text-right"
+                                  />
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setShowCustom((prev) => { const next = new Set(prev); next.delete(ann.id); return next; });
+                                  setCustomCopy((prev) => { const next = { ...prev }; delete next[ann.id]; return next; });
+                                }}
+                                className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                              >
+                                Cancel custom copy
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        </>
                       )}
                     </div>
                   );
@@ -1264,6 +1572,32 @@ export default function NewRequestPage() {
         )}
 
       </main>
+
+      {/* ── Bulk action bar (Feature 4) — floats above generate card ── */}
+      {selectedStrings.size > 0 && (
+        <div className="fixed bottom-[128px] inset-x-0 z-40 px-4 sm:px-6 lg:px-8">
+          <div className="bg-ink text-white rounded-2xl shadow-lg px-5 py-3 flex items-center justify-between gap-4">
+            <p className="text-sm font-medium">
+              {selectedStrings.size} string{selectedStrings.size !== 1 ? "s" : ""} selected
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setSelectedStrings(new Set())}
+                className="text-xs text-white/60 hover:text-white transition-colors"
+              >
+                Clear
+              </button>
+              <button
+                onClick={submitSelected}
+                disabled={saving}
+                className="px-4 py-2 rounded-xl bg-white text-ink text-xs font-semibold hover:bg-gray-100 transition-colors disabled:opacity-50"
+              >
+                {saving ? "Submitting…" : "Submit selected for review"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Generate copy floating card (above sticky bar) ── */}
       <div className="fixed bottom-[64px] inset-x-0 z-40 px-4 sm:px-6 lg:px-8">

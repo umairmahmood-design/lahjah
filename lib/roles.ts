@@ -62,6 +62,20 @@ export async function isCopyTeamUser(uid: string): Promise<boolean> {
 }
 
 /**
+ * Returns the display name for a user: displayName → email → uid fallback.
+ */
+export async function getUserDisplayName(uid: string): Promise<string> {
+  try {
+    const snap = await getDoc(doc(db, "users", uid));
+    if (snap.exists()) {
+      const data = snap.data();
+      return (data.displayName as string | undefined) ?? (data.email as string | undefined) ?? uid;
+    }
+  } catch {}
+  return uid;
+}
+
+/**
  * Returns the UIDs of every user with role "copy_team".
  * Used to fan out notifications to the whole Copy Team.
  */
