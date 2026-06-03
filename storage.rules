@@ -1,0 +1,26 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Feature screenshots — any authenticated user can upload/read
+    // (screenshots are shared with Copy Team reviewers via download URLs)
+    match /screenshots/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Competitor reference screenshots — same: any authenticated user
+    match /competitor-refs/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Chat image attachments — users can only access their own chat uploads
+    match /chats/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Brand guidelines document — any authenticated user can upload/read
+    match /guidelines/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

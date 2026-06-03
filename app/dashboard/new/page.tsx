@@ -644,7 +644,8 @@ export default function NewRequestPage() {
         )
       );
       router.push(`/dashboard/${docRef.id}`);
-    } catch {
+    } catch (err) {
+      console.error("[submitSelected] Save failed:", err);
       setError("Failed to save. Please try again.");
       setSaving(false);
     }
@@ -729,7 +730,8 @@ export default function NewRequestPage() {
       } else {
         router.push("/dashboard");
       }
-    } catch {
+    } catch (err) {
+      console.error("[save] Save failed:", err);
       setError("Failed to save. Please try again.");
       setSaving(false);
     }
