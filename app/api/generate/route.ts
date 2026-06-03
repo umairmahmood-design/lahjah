@@ -35,8 +35,13 @@ export async function POST(req: NextRequest) {
   } = body;
 
   if (!title || !description) {
+    const missing = [!title && "title", !description && "description"].filter(Boolean).join(", ");
+    console.error("[/api/generate] 400 — missing required fields:", missing, {
+      titleReceived: JSON.stringify(title),
+      descriptionReceived: JSON.stringify(description),
+    });
     return NextResponse.json(
-      { error: "title and description are required." },
+      { error: `Missing required fields: ${missing}. Make sure the request title is filled in before generating copy.` },
       { status: 400 }
     );
   }

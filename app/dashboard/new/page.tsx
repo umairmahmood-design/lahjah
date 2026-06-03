@@ -565,6 +565,11 @@ export default function NewRequestPage() {
 
   async function handleGenerate() {
     if (annotations.length === 0 || uploadsInProgress || generating) return;
+    if (!title.trim()) {
+      setError("Please enter a request title before generating copy.");
+      return;
+    }
+    setError("");
     setGenerating(true);
     setGenerated(true);
     await Promise.all(annotations.map((ann) => generateOne(ann)));

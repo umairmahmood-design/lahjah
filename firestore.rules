@@ -25,5 +25,10 @@ service cloud.firestore {
       allow create: if request.auth != null;
       allow read: if request.auth != null && request.auth.uid == resource.data.userId;
     }
+
+    // Chat conversations and messages — users can only access their own chats.
+    match /chats/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
   }
 }
