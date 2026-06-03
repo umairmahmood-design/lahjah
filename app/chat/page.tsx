@@ -73,9 +73,12 @@ export default function ChatPage() {
   const [language, setLanguage] = useState<Language>("en");
   const [sending, setSending] = useState(false);
   const [streamingContent, setStreamingContent] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dropError, setDropError] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dragCounterRef = useRef(0);
 
   // Auth guard
   useEffect(() => {
@@ -138,6 +141,53 @@ export default function ChatPage() {
     if (pendingImagePreview) URL.revokeObjectURL(pendingImagePreview);
     setPendingImage(null);
     setPendingImagePreview(null);
+  }
+
+  function attachFile(file: File) {
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+      setDropError("Only image files are supported");
+      setTimeout(() => setDropError(null), 3000);
+      return;
+    }
+    if (pendingImagePreview) URL.revokeObjectURL(pendingImagePreview);
+    setPendingImage(file);
+    setPendingImagePreview(URL.createObjectURL(file));
+  }
+
+  function handleDragEnter(e: React.DragEvent) {
+    e.preventDefault();
+    dragCounterRef.current += 1;
+    if (dragCounterRef.current === 1) setIsDragging(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current === 0) setIsDragging(false);
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    dragCounterRef.current = 0;
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) attachFile(file);
+  }
+
+  function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
+    const item = Array.from(e.clipboardData.items).find(
+      (i) => i.kind === "file" && i.type.startsWith("image/")
+    );
+    if (!item) return;
+    const file = item.getAsFile();
+    if (file) {
+      e.preventDefault();
+      attachFile(file);
+    }
   }
 
   async function handleSend(overrideText?: string) {
@@ -287,7 +337,31 @@ export default function ChatPage() {
         </aside>
 
         {/* Main area */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div
+          className="flex-1 flex flex-col overflow-hidden relative"
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+        >
+          {/* Drag overlay */}
+          {isDragging && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+              <div className="absolute inset-2 rounded-2xl border-2 border-dashed border-brand bg-blue-50/70" />
+              <div className="relative z-10 flex flex-col items-center gap-2">
+                <PaperclipIcon />
+                <span className="text-sm font-semibold text-brand">Drop image to attach</span>
+              </div>
+            </div>
+          )}
+
+          {/* Drop error toast */}
+          {dropError && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700 shadow-sm">
+              {dropError}
+            </div>
+          )}
+
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-6 py-6">
             {messages.length === 0 && streamingContent === null ? (
@@ -370,6 +444,7 @@ export default function ChatPage() {
                       handleSend();
                     }
                   }}
+                  onPaste={handlePaste}
                   placeholder="Ask Lahjah anything about copy..."
                   className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
                 />
