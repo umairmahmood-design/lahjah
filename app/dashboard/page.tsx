@@ -26,8 +26,15 @@ interface CopyRequest {
   status: RequestStatus;
   createdAt: Timestamp;
   tone?: string;
+  domain?: string;
   screenshotURLs?: string[];
+  createdBy: string;
   reviewedBy?: string;
+}
+
+interface CreatorInfo {
+  name: string;
+  photoURL?: string;
 }
 
 export default function DashboardPage() {
@@ -38,6 +45,7 @@ export default function DashboardPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [reviewerNames, setReviewerNames] = useState<Record<string, string>>({});
+  const [creatorInfo, setCreatorInfo] = useState<Record<string, CreatorInfo>>({});
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -75,6 +83,28 @@ export default function DashboardPage() {
           Promise.all(reviewerUids.map(async (u) => [u, await getUserDisplayName(u)] as const)).then((pairs) =>
             setReviewerNames(Object.fromEntries(pairs))
           );
+        }
+
+        // Fetch creator info (name + photoURL) for each unique createdBy UID
+        const creatorUids = Array.from(new Set(docs.map((d) => d.createdBy).filter(Boolean)));
+        if (creatorUids.length > 0) {
+          Promise.all(
+            creatorUids.map(async (u) => {
+              try {
+                const snap = await getDoc(doc(db, "users", u));
+                if (snap.exists()) {
+                  const data = snap.data();
+                  const name =
+                    (data.displayName as string | undefined) ??
+                    (data.email as string | undefined) ??
+                    u;
+                  const photoURL = data.photoURL as string | undefined;
+                  return [u, { name, photoURL }] as const;
+                }
+              } catch {}
+              return [u, { name: u }] as const;
+            })
+          ).then((pairs) => setCreatorInfo(Object.fromEntries(pairs)));
         }
       },
       (err) => {
@@ -193,6 +223,7 @@ export default function DashboardPage() {
                         <h3 className="font-medium text-gray-900 truncate group-hover:text-ink transition-colors">
                           {req.title}
                         </h3>
+                        {/* Meta row: date · tone · domain pill */}
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                           <span className="text-xs text-gray-400">
                             {req.createdAt?.toDate().toLocaleDateString("en-US", {
@@ -207,6 +238,11 @@ export default function DashboardPage() {
                               <span className="text-xs text-gray-400 capitalize">{req.tone}</span>
                             </>
                           )}
+                          {req.domain && (
+                            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-[#F4F5F6] text-[#222629]">
+                              {req.domain}
+                            </span>
+                          )}
                           {req.reviewedBy && reviewerNames[req.reviewedBy] && (
                             <>
                               <span className="text-xs text-gray-300">·</span>
@@ -214,6 +250,31 @@ export default function DashboardPage() {
                             </>
                           )}
                         </div>
+                        {/* Raised by row */}
+                        {creatorInfo[req.createdBy] && (
+                          <div className="flex items-center gap-1.5 mt-1">
+                            {creatorInfo[req.createdBy].photoURL ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={creatorInfo[req.createdBy].photoURL}
+                                alt=""
+                                className="w-4 h-4 rounded-full object-cover shrink-0"
+                              />
+                            ) : (
+                              <div className="w-4 h-4 rounded-full bg-brand/20 flex items-center justify-center shrink-0">
+                                <span className="text-[8px] font-bold text-ink leading-none">
+                                  {creatorInfo[req.createdBy].name.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                            )}
+                            <span className="text-xs text-gray-400">
+                              Raised by{" "}
+                              <span className="text-gray-600 font-medium">
+                                {creatorInfo[req.createdBy].name}
+                              </span>
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <span className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${cfg.classes}`}>
                         {cfg.label}
