@@ -6,6 +6,8 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ["pdf-parse", "mammoth"],
   },
+  // react-markdown and remark-gfm are ESM-only — transpile them for webpack
+  transpilePackages: ["react-markdown", "remark-gfm"],
   images: {
     remotePatterns: [
       {

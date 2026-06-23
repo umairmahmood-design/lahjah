@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     if (snap.exists) {
       const content = (snap.data()?.content as string | undefined)?.trim();
       if (content) {
-        guidelinesSection = `\n\nBRAND GUIDELINES (follow these for every suggestion):\n${content}`;
+        guidelinesSection = `\n\nBRAND GUIDELINES — AUTHORITATIVE (these are HungerStation's official brand standards, not suggestions):\n- Apply these exactly for every suggestion.\n- Any glossary or terminology entries are APPROVED, locked translations — use them exactly as given, never substitute alternatives.\n- If a requested term conflicts with the glossary, use the approved glossary term.\n\n${content}`;
       }
     }
   } catch {

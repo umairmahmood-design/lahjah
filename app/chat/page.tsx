@@ -17,6 +17,8 @@ import {
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { auth, db, storage } from "@/lib/firebase";
 import DashboardNav from "@/components/DashboardNav";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 type Language = "en" | "ar";
 
@@ -61,6 +63,126 @@ async function fileToBase64(file: File): Promise<string> {
   });
 }
 
+// ── Copy-able table cell ────────────────────────────────────────────────────
+function CopyableCell({ children, style }: { children?: React.ReactNode; style?: React.CSSProperties }) {
+  const [copied, setCopied] = useState(false);
+  const cellRef = useRef<HTMLTableCellElement>(null);
+
+  async function handleCopy() {
+    const text = cellRef.current?.textContent?.trim() ?? "";
+    if (!text) return;
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <td
+      ref={cellRef}
+      className="border border-gray-200 px-3 py-2 text-sm align-top"
+      style={style}
+    >
+      <div className="flex items-start justify-between gap-2 group">
+        <div className="flex-1 min-w-0">{children}</div>
+        <button
+          onClick={handleCopy}
+          title="Copy"
+          className="shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+        >
+          {copied ? (
+            <span className="text-xs text-green-600 font-medium whitespace-nowrap">✓ Copied</span>
+          ) : (
+            <SmallCopyIcon />
+          )}
+        </button>
+      </div>
+    </td>
+  );
+}
+
+// ── Markdown renderer ───────────────────────────────────────────────────────
+function MarkdownContent({ content, isRtl }: { content: string; isRtl: boolean }) {
+  return (
+    <div className="text-sm leading-relaxed" dir={isRtl ? "rtl" : "ltr"}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          // Tables
+          table: ({ children }) => (
+            <div className="overflow-x-auto my-2">
+              <table className="border-collapse border border-gray-200 w-full text-sm">
+                {children}
+              </table>
+            </div>
+          ),
+          thead: ({ children }) => <thead className="bg-gray-50">{children}</thead>,
+          tbody: ({ children }) => <tbody>{children}</tbody>,
+          tr: ({ children }) => <tr className="even:bg-gray-50/50">{children}</tr>,
+          th: ({ children, style }) => (
+            <th
+              className="border border-gray-200 px-3 py-2 text-left text-xs font-semibold text-gray-600"
+              style={style as React.CSSProperties | undefined}
+            >
+              {children}
+            </th>
+          ),
+          // td with inline copy button
+          td: ({ children, style }) => (
+            <CopyableCell style={style as React.CSSProperties | undefined}>
+              {children}
+            </CopyableCell>
+          ),
+          // Typography
+          h1: ({ children }) => (
+            <h1 className="text-base font-bold mt-3 mb-1 text-gray-900">{children}</h1>
+          ),
+          h2: ({ children }) => (
+            <h2 className="text-sm font-semibold mt-3 mb-1 text-gray-900">{children}</h2>
+          ),
+          h3: ({ children }) => (
+            <h3 className="text-sm font-semibold mt-2 mb-1 text-gray-700">{children}</h3>
+          ),
+          p: ({ children }) => <p className="my-1">{children}</p>,
+          strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+          em: ({ children }) => <em className="italic">{children}</em>,
+          ul: ({ children }) => (
+            <ul className="list-disc pl-5 my-1.5 space-y-0.5">{children}</ul>
+          ),
+          ol: ({ children }) => (
+            <ol className="list-decimal pl-5 my-1.5 space-y-0.5">{children}</ol>
+          ),
+          li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+          hr: () => <hr className="my-3 border-gray-200" />,
+          blockquote: ({ children }) => (
+            <blockquote className="border-l-2 border-gray-300 pl-3 my-2 text-gray-600 italic">
+              {children}
+            </blockquote>
+          ),
+          pre: ({ children }) => (
+            <pre className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs overflow-x-auto my-2 font-mono">
+              {children}
+            </pre>
+          ),
+          code: ({ children, className }) => {
+            // Block code (inside <pre>) has a language- className
+            if (className) {
+              return <code className="font-mono text-xs">{children}</code>;
+            }
+            return (
+              <code className="bg-gray-100 rounded px-1 py-0.5 text-xs font-mono">
+                {children}
+              </code>
+            );
+          },
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
+// ── Main page ───────────────────────────────────────────────────────────────
 export default function ChatPage() {
   const router = useRouter();
   const [uid, setUid] = useState<string | null>(null);
@@ -197,7 +319,6 @@ export default function ChatPage() {
     setSending(true);
     setInputText("");
 
-    // Capture image + message history before any async state changes
     const imageFile = pendingImage;
     const historySnapshot = messages;
     setPendingImage(null);
@@ -243,7 +364,7 @@ export default function ChatPage() {
         updatedAt: serverTimestamp(),
       });
 
-      // 4. Build history for API (from snapshot — excludes the message just saved)
+      // 4. Build history for API
       const history = [
         ...historySnapshot.map((m) => ({ role: m.role, content: m.content })),
         {
@@ -393,7 +514,7 @@ export default function ChatPage() {
                   <MessageBubble key={msg.id} msg={msg} />
                 ))}
                 {streamingContent !== null && (
-                  <StreamingBubble content={streamingContent} />
+                  <StreamingBubble content={streamingContent} isRtl={language === "ar"} />
                 )}
                 <div ref={messagesEndRef} />
               </div>
@@ -441,7 +562,7 @@ export default function ChatPage() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      handleSend();
+                      void handleSend();
                     }
                   }}
                   onPaste={handlePaste}
@@ -455,7 +576,7 @@ export default function ChatPage() {
                   {language === "en" ? "EN" : "AR"}
                 </button>
                 <button
-                  onClick={() => handleSend()}
+                  onClick={() => void handleSend()}
                   disabled={sending || !inputText.trim()}
                   className="px-4 py-2.5 rounded-xl bg-brand text-ink text-sm font-semibold hover:bg-brand-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                 >
@@ -470,8 +591,11 @@ export default function ChatPage() {
   );
 }
 
+// ── Message bubble (saved messages) ────────────────────────────────────────
 function MessageBubble({ msg }: { msg: MessageDoc }) {
   const isUser = msg.role === "user";
+  const isRtl = msg.language === "ar";
+
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div className={`max-w-lg flex flex-col gap-1 ${isUser ? "items-end" : "items-start"}`}>
@@ -485,13 +609,19 @@ function MessageBubble({ msg }: { msg: MessageDoc }) {
         )}
         {msg.content && (
           <div
-            className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
+            className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
               isUser
                 ? "bg-ink text-white rounded-br-sm"
                 : "bg-white text-gray-900 border border-gray-100 shadow-sm rounded-bl-sm"
             }`}
           >
-            {msg.content}
+            {isUser ? (
+              <p className="whitespace-pre-wrap" dir={isRtl ? "rtl" : "ltr"}>
+                {msg.content}
+              </p>
+            ) : (
+              <MarkdownContent content={msg.content} isRtl={isRtl} />
+            )}
           </div>
         )}
         <span className="text-xs text-gray-400 px-1">{formatTime(msg.createdAt)}</span>
@@ -500,12 +630,15 @@ function MessageBubble({ msg }: { msg: MessageDoc }) {
   );
 }
 
-function StreamingBubble({ content }: { content: string }) {
+// ── Streaming bubble (in-flight response) ──────────────────────────────────
+function StreamingBubble({ content, isRtl }: { content: string; isRtl: boolean }) {
   return (
     <div className="flex justify-start">
       <div className="max-w-lg flex flex-col gap-1 items-start">
-        <div className="px-4 py-2.5 rounded-2xl rounded-bl-sm text-sm leading-relaxed whitespace-pre-wrap bg-white text-gray-900 border border-gray-100 shadow-sm min-w-[3rem]">
-          {content || (
+        <div className="px-4 py-3 rounded-2xl rounded-bl-sm text-sm leading-relaxed bg-white text-gray-900 border border-gray-100 shadow-sm min-w-[3rem]">
+          {content ? (
+            <MarkdownContent content={content} isRtl={isRtl} />
+          ) : (
             <span className="inline-flex gap-1 items-center py-0.5">
               <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0ms]" />
               <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:150ms]" />
@@ -518,6 +651,7 @@ function StreamingBubble({ content }: { content: string }) {
   );
 }
 
+// ── Icons ───────────────────────────────────────────────────────────────────
 function ChatBubbleIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -530,6 +664,15 @@ function PaperclipIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+    </svg>
+  );
+}
+
+function SmallCopyIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 hover:text-gray-600">
+      <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
     </svg>
   );
 }
