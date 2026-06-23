@@ -3,7 +3,23 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const SYSTEM_PROMPT = `You are Lahjah, an AI copy assistant for HungerStation's product and design teams. You help designers and writers create clear, on-brand UI copy in English and Arabic. You understand HungerStation's tone: friendly, clear, and culturally relevant for MENA markets. When given a screenshot, describe what UI elements you see and suggest copy for them. Always provide suggestions in the language the user requests (EN or AR). For Arabic, use Gulf dialect that feels natural for a food delivery app.`;
+const BASE_SYSTEM_PROMPT = `You are Lahjah, an AI copy assistant for HungerStation's product and design teams. You help designers and writers create clear, on-brand UI copy in English and Arabic. You understand HungerStation's tone: friendly, clear, and culturally relevant for MENA markets. When given a screenshot, describe what UI elements you see and suggest copy for them. Always provide suggestions in the language the user requests (EN or AR). For Arabic, use Gulf dialect that feels natural for a food delivery app.`;
+
+async function buildSystemPrompt(): Promise<string> {
+  try {
+    const { adminDb } = await import("@/lib/firebase-admin");
+    const snap = await adminDb.doc("settings/guidelines").get();
+    if (snap.exists) {
+      const content = (snap.data()?.content as string | undefined)?.trim();
+      if (content) {
+        return `${BASE_SYSTEM_PROMPT}\n\nBRAND GUIDELINES (follow these for all copy suggestions):\n${content}`;
+      }
+    }
+  } catch {
+    // Non-fatal — proceed without guidelines
+  }
+  return BASE_SYSTEM_PROMPT;
+}
 
 interface MessageInput {
   role: "user" | "assistant";
@@ -60,11 +76,13 @@ export async function POST(req: NextRequest) {
     };
   });
 
+  const systemPrompt = await buildSystemPrompt();
+
   try {
     const stream = await client.messages.stream({
       model: "claude-sonnet-4-6",
       max_tokens: 2048,
-      system: SYSTEM_PROMPT,
+      system: systemPrompt,
       messages: anthropicMessages,
     });
 

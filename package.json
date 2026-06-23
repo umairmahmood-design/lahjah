@@ -12,6 +12,7 @@
     "@anthropic-ai/sdk": "^0.30.0",
     "firebase": "^10.12.0",
     "firebase-admin": "^12.2.0",
+    "mammoth": "^1.12.0",
     "next": "14.2.29",
     "pdf-parse": "^2.4.5",
     "react": "^18",

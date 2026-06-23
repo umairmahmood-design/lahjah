@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-// pdf-parse is CJS — require() is the reliable interop path in Node.js API routes
+// pdf-parse and mammoth are CJS — require() is the reliable interop path in Node.js API routes
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdf = require("pdf-parse") as (buf: Buffer) => Promise<{ text: string }>;
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const mammoth = require("mammoth") as {
+  extractRawText: (opts: { buffer: Buffer }) => Promise<{ value: string }>;
+};
 
 export async function POST(req: NextRequest) {
   let formData: FormData;
@@ -16,13 +20,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No file provided." }, { status: 400 });
   }
 
-  const type = file.type;
-  const isPdf = type === "application/pdf" || file.name.endsWith(".pdf");
-  const isTxt = type === "text/plain" || file.name.endsWith(".txt");
+  const isPdf =
+    file.type === "application/pdf" || file.name.endsWith(".pdf");
+  const isDocx =
+    file.type ===
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    file.name.endsWith(".docx");
+  const isTxt = file.type === "text/plain" || file.name.endsWith(".txt");
 
-  if (!isPdf && !isTxt) {
+  if (!isPdf && !isDocx && !isTxt) {
     return NextResponse.json(
-      { error: "Only PDF and plain text files are supported." },
+      { error: "Only PDF, DOCX, and plain text files are supported." },
       { status: 400 }
     );
   }
@@ -34,6 +42,9 @@ export async function POST(req: NextRequest) {
     if (isPdf) {
       const result = await pdf(buffer);
       text = result.text.trim();
+    } else if (isDocx) {
+      const result = await mammoth.extractRawText({ buffer });
+      text = result.value.trim();
     } else {
       text = buffer.toString("utf-8").trim();
     }

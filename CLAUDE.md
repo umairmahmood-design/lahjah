@@ -72,6 +72,14 @@ components/
 - Language toggle EN/AR — appended as instruction to each message
 - Available to all authenticated users (Designer + Copy Team)
 
+## Brand Tone Guidelines (/dashboard/guidelines)
+- Firestore: `settings/guidelines` — fields: `content`, `fileUrl?`, `fileName?`, `updatedBy`, `updatedByName`, `updatedAt`
+- Visible to all users; upload/edit controls shown only to Copy Team
+- Primary input: paste/write text in textarea; secondary: upload PDF, DOCX, or TXT (text extracted server-side via `/api/extract-guidelines`)
+- DOCX extraction uses `mammoth`; PDF extraction uses `pdf-parse`
+- Fetched in both `/api/generate` and `/api/chat` and prepended to the system prompt as brand context
+- If no guidelines exist, generation works as before (no breakage)
+
 ## New Request Page (/dashboard/new) — Generation UX
 - Drag-and-drop or paste (Cmd+V) to attach screenshots anywhere on the page
 - Copy icon on each generated suggestion → clipboard, "✓" confirmation for 2s

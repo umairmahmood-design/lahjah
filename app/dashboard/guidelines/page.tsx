@@ -2,17 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  doc,
-  getDoc,
-  setDoc,
-  serverTimestamp,
-} from "firebase/firestore";
-import {
-  ref,
-  uploadBytesResumable,
-  getDownloadURL,
-} from "firebase/storage";
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth, db, storage } from "@/lib/firebase";
 import { isCopyTeamUser } from "@/lib/roles";
@@ -20,148 +11,166 @@ import DashboardNav from "@/components/DashboardNav";
 
 interface Guidelines {
   content: string;
-  fileName: string;
-  uploadedAt: { toDate(): Date } | null;
-  uploadedBy: string;
+  fileUrl?: string;
+  fileName?: string;
+  updatedBy: string;
+  updatedByName: string;
+  updatedAt: { toDate(): Date } | null;
 }
-
-type PageState = "loading" | "access-denied" | "ready";
 
 export default function GuidelinesPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [pageState, setPageState] = useState<PageState>("loading");
+  const [loading, setLoading] = useState(true);
+  const [isCopyTeam, setIsCopyTeam] = useState(false);
   const [current, setCurrent] = useState<Guidelines | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [mode, setMode] = useState<"view" | "edit">("view");
+
+  // Edit state
+  const [editText, setEditText] = useState("");
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [extracting, setExtracting] = useState(false);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
-  const [confirmFile, setConfirmFile] = useState<File | null>(null);
 
-  // ── Auth + admin check ──────────────────────────────────────────
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         router.replace("/login");
         return;
       }
-
-      const isAdmin = await isCopyTeamUser(user.uid);
-
-      if (!isAdmin) {
-        setPageState("access-denied");
-        return;
-      }
-
-      // Load current guidelines
-      const guidelinesSnap = await getDoc(doc(db, "settings", "guidelines"));
-      if (guidelinesSnap.exists()) {
-        setCurrent(guidelinesSnap.data() as Guidelines);
-      }
-      setPageState("ready");
+      const [isAdmin, snap] = await Promise.all([
+        isCopyTeamUser(user.uid),
+        getDoc(doc(db, "settings", "guidelines")),
+      ]);
+      setIsCopyTeam(isAdmin);
+      if (snap.exists()) setCurrent(snap.data() as Guidelines);
+      setLoading(false);
     });
     return unsub;
   }, [router]);
 
-  // ── File selection ──────────────────────────────────────────────
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function startEdit() {
+    setEditText(current?.content ?? "");
+    setPendingFile(null);
+    setError("");
+    setMode("edit");
+  }
+
+  function cancelEdit() {
+    setMode("view");
+    setError("");
+    setPendingFile(null);
+  }
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
 
-    const valid = file.type === "application/pdf" ||
-      file.type === "text/plain" ||
-      file.name.endsWith(".pdf") ||
-      file.name.endsWith(".txt");
+    const isPdf = file.type === "application/pdf" || file.name.endsWith(".pdf");
+    const isDocx =
+      file.type ===
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      file.name.endsWith(".docx");
+    const isTxt = file.type === "text/plain" || file.name.endsWith(".txt");
 
-    if (!valid) {
-      setError("Only PDF and .txt files are supported.");
+    if (!isPdf && !isDocx && !isTxt) {
+      setError("Only PDF, DOCX, and TXT files are supported.");
       return;
     }
 
     setError("");
-
-    // If guidelines already exist, ask for confirmation first
-    if (current) {
-      setConfirmFile(file);
-    } else {
-      void processUpload(file);
-    }
-  }
-
-  // ── Extract + upload + save ─────────────────────────────────────
-  async function processUpload(file: File) {
-    setUploading(true);
-    setUploadProgress(0);
-    setError("");
-    setSuccessMsg("");
-    setConfirmFile(null);
-
+    setExtracting(true);
     try {
-      // Step 1: Extract text
       const formData = new FormData();
       formData.append("file", file);
-      const extractRes = await fetch("/api/extract-guidelines", {
+      const res = await fetch("/api/extract-guidelines", {
         method: "POST",
         body: formData,
       });
-      if (!extractRes.ok) {
-        const body = await extractRes.json() as { error?: string };
+      if (!res.ok) {
+        const body = (await res.json()) as { error?: string };
         throw new Error(body.error ?? "Extraction failed.");
       }
-      const { text } = await extractRes.json() as { text: string };
-
-      // Step 2: Upload file to Firebase Storage
-      const uid = auth.currentUser?.uid;
-      if (!uid) throw new Error("Not authenticated.");
-
-      const path = `guidelines/${Date.now()}_${file.name}`;
-      const storageRef = ref(storage, path);
-      const task = uploadBytesResumable(storageRef, file);
-
-      await new Promise<void>((resolve, reject) => {
-        task.on(
-          "state_changed",
-          (snap) => {
-            setUploadProgress(
-              Math.round((snap.bytesTransferred / snap.totalBytes) * 100)
-            );
-          },
-          reject,
-          resolve
-        );
-      });
-
-      const downloadUrl = await getDownloadURL(task.snapshot.ref);
-      void downloadUrl; // stored in Storage; text is what we use in prompts
-
-      // Step 3: Save to Firestore
-      const guidelinesData = {
-        content: text,
-        fileName: file.name,
-        uploadedAt: serverTimestamp(),
-        uploadedBy: uid,
-      };
-      await setDoc(doc(db, "settings", "guidelines"), guidelinesData);
-
-      setCurrent({
-        ...guidelinesData,
-        uploadedAt: { toDate: () => new Date() },
-      });
-      setSuccessMsg("Brand guidelines updated successfully.");
-      setTimeout(() => setSuccessMsg(""), 3000);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Upload failed.";
-      setError(msg);
+      const { text } = (await res.json()) as { text: string };
+      setEditText(text);
+      setPendingFile(file);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to extract text.");
     } finally {
-      setUploading(false);
-      setUploadProgress(0);
+      setExtracting(false);
     }
   }
 
-  // ── Render states ───────────────────────────────────────────────
-  if (pageState === "loading") {
+  async function handleSave() {
+    if (!editText.trim()) {
+      setError("Guidelines content cannot be empty.");
+      return;
+    }
+
+    const user = auth.currentUser;
+    if (!user) {
+      setError("Not authenticated.");
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+
+    try {
+      let fileUrl: string | undefined;
+      let fileName: string | undefined;
+
+      if (pendingFile) {
+        const path = `guidelines/${Date.now()}_${pendingFile.name}`;
+        const storageRef = ref(storage, path);
+        const task = uploadBytesResumable(storageRef, pendingFile);
+        await new Promise<void>((resolve, reject) => {
+          task.on("state_changed", null, reject, resolve);
+        });
+        fileUrl = await getDownloadURL(task.snapshot.ref);
+        fileName = pendingFile.name;
+      } else if (current?.fileUrl) {
+        // Preserve existing file reference when saving text edits
+        fileUrl = current.fileUrl;
+        fileName = current.fileName;
+      }
+
+      const updatedByName = user.displayName ?? user.email ?? user.uid;
+      const data: Record<string, unknown> = {
+        content: editText.trim(),
+        updatedBy: user.uid,
+        updatedByName,
+        updatedAt: serverTimestamp(),
+      };
+      if (fileUrl) {
+        data.fileUrl = fileUrl;
+        data.fileName = fileName;
+      }
+
+      await setDoc(doc(db, "settings", "guidelines"), data);
+
+      setCurrent({
+        content: editText.trim(),
+        ...(fileUrl ? { fileUrl, fileName } : {}),
+        updatedBy: user.uid,
+        updatedByName,
+        updatedAt: { toDate: () => new Date() },
+      });
+      setMode("view");
+      setSuccessMsg("Brand guidelines saved successfully.");
+      setTimeout(() => setSuccessMsg(""), 4000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save guidelines.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <DashboardNav />
@@ -172,192 +181,195 @@ export default function GuidelinesPage() {
     );
   }
 
-  if (pageState === "access-denied") {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <DashboardNav />
-        <div className="max-w-2xl mx-auto px-6 py-16 text-center">
-          <p className="text-2xl mb-3">🔒</p>
-          <h1 className="text-lg font-semibold text-gray-900 mb-2">
-            Access restricted
-          </h1>
-          <p className="text-sm text-gray-500 mb-6">
-            Only admins can manage brand guidelines.
-          </p>
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="text-sm text-gray-400 hover:text-gray-600 underline"
-          >
-            Back to dashboard
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
       <DashboardNav />
 
-      <main className="max-w-2xl mx-auto px-6 py-8 space-y-5">
+      <main className="max-w-3xl mx-auto px-6 py-8 space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Brand Guidelines</h1>
-          <p className="text-sm text-gray-400 mt-1">
-            The uploaded document is fed as context into every copy generation request.
-          </p>
-        </div>
-
-        {/* Current guidelines */}
-        {current && (
-          <div className="bg-white rounded-2xl border border-gray-100 p-5">
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-3">
-              Active guidelines
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Brand Tone Guidelines</h1>
+            <p className="text-sm text-gray-400 mt-1">
+              These guidelines are used as context for all copy generated in Lahjah.
             </p>
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#F4F5F6] flex items-center justify-center text-sm shrink-0">
-                  {current.fileName.endsWith(".pdf") ? "📄" : "📝"}
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    {current.fileName}
-                  </p>
-                  {current.uploadedAt && (
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      Uploaded{" "}
-                      {current.uploadedAt.toDate().toLocaleDateString("en-US", {
-                        month: "long",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <span className="px-2.5 py-1 rounded-full bg-[#F4F5F6] text-ink text-xs font-medium shrink-0">
-                Active
-              </span>
-            </div>
-
-            {/* Content preview */}
-            <div className="mt-4 p-3 rounded-xl bg-gray-50 border border-gray-100 max-h-36 overflow-y-auto">
-              <p className="text-xs text-gray-500 leading-relaxed whitespace-pre-wrap">
-                {current.content.slice(0, 600)}
-                {current.content.length > 600 && (
-                  <span className="text-gray-300">
-                    {" "}…{" "}
-                    <span className="not-italic">
-                      ({current.content.length - 600} more characters)
-                    </span>
-                  </span>
-                )}
-              </p>
-            </div>
           </div>
-        )}
-
-        {/* Upload zone */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-5">
-          <p className="text-sm font-medium text-gray-700 mb-1">
-            {current ? "Replace guidelines" : "Upload guidelines"}
-          </p>
-          <p className="text-xs text-gray-400 mb-4">
-            Supported formats: PDF, TXT. The document text will be extracted and
-            injected into every generation prompt.
-          </p>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,.txt,application/pdf,text/plain"
-            className="hidden"
-            onChange={handleFileChange}
-            disabled={uploading}
-          />
-
-          {uploading ? (
-            <div className="border-2 border-dashed border-gray-200 rounded-xl py-10 flex flex-col items-center gap-3">
-              <div className="w-8 h-8 border-[3px] border-brand border-t-transparent rounded-full animate-spin" />
-              <p className="text-sm text-gray-500">
-                {uploadProgress < 50
-                  ? "Extracting text…"
-                  : `Uploading… ${uploadProgress}%`}
-              </p>
-              <div className="w-40 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-brand rounded-full transition-all"
-                  style={{ width: `${uploadProgress}%` }}
-                />
-              </div>
-            </div>
-          ) : (
+          {isCopyTeam && mode === "view" && (
             <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full border-2 border-dashed border-gray-200 rounded-xl py-10 flex flex-col items-center gap-2 hover:border-ink/20 hover:bg-brand/10 transition-all group"
+              onClick={startEdit}
+              className="shrink-0 px-4 py-2 rounded-lg bg-white border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
             >
-              <span className="text-3xl text-gray-300 group-hover:text-ink/40 transition-colors">
-                ⬆
-              </span>
-              <span className="text-sm text-gray-500 font-medium">
-                {current ? "Upload new document to replace" : "Upload PDF or TXT"}
-              </span>
-              <span className="text-xs text-gray-300">
-                Click to browse files
-              </span>
+              {current ? "Edit guidelines" : "Add guidelines"}
             </button>
           )}
         </div>
 
-        {/* Error */}
-        {error && (
-          <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl border border-red-100">
-            {error}
-          </p>
-        )}
-
-        {/* Success */}
         {successMsg && (
           <p className="text-sm text-green-700 bg-green-50 px-4 py-3 rounded-xl border border-green-100">
             {successMsg}
           </p>
         )}
-      </main>
 
-      {/* Confirmation dialog */}
-      {confirmFile && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full">
-            <h2 className="text-base font-semibold text-gray-900 mb-2">
-              Replace existing guidelines?
-            </h2>
-            <p className="text-sm text-gray-500 mb-1">
-              This will replace{" "}
-              <span className="font-medium text-gray-700">{current?.fileName}</span>{" "}
-              with{" "}
-              <span className="font-medium text-gray-700">{confirmFile.name}</span>.
-            </p>
-            <p className="text-sm text-gray-400 mb-6">
-              All future copy generation requests will use the new document.
-            </p>
-            <div className="flex gap-3">
+        {/* ── VIEW MODE ─────────────────────────────────────────── */}
+        {mode === "view" && (
+          <>
+            {current ? (
+              <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
+                {/* Meta */}
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                      Active guidelines
+                    </p>
+                    {current.updatedAt && (
+                      <p className="text-xs text-gray-400 mt-1">
+                        Last updated by{" "}
+                        <span className="font-medium text-gray-600">
+                          {current.updatedByName}
+                        </span>{" "}
+                        on{" "}
+                        {current.updatedAt.toDate().toLocaleDateString("en-US", {
+                          month: "long",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </p>
+                    )}
+                    {current.fileName && (
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        Source file:{" "}
+                        <span className="font-medium text-gray-600">
+                          {current.fileName}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full bg-green-50 text-green-700 text-xs font-medium shrink-0 border border-green-100">
+                    Active
+                  </span>
+                </div>
+
+                {/* Content */}
+                <div className="rounded-xl bg-gray-50 border border-gray-100 p-4 max-h-96 overflow-y-auto">
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                    {current.content}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+                <p className="text-3xl mb-3">📋</p>
+                <p className="text-sm font-medium text-gray-500">
+                  No brand guidelines uploaded yet.
+                </p>
+                {isCopyTeam && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    Click "Add guidelines" to get started.
+                  </p>
+                )}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── EDIT MODE ─────────────────────────────────────────── */}
+        {mode === "edit" && (
+          <div className="space-y-4">
+            {/* Textarea */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-gray-700">
+                  Guidelines content
+                </p>
+                <span className="text-xs text-gray-400">
+                  {editText.length > 0
+                    ? `${editText.length.toLocaleString()} characters`
+                    : "Paste or write your brand guidelines below"}
+                </span>
+              </div>
+              <textarea
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                placeholder={`Paste your brand tone and voice guidelines here…\n\nFor example:\n- Tone: Friendly, clear, and conversational\n- Do: Use active voice\n- Don't: Use jargon or overly formal language\n- Terminology: Always write "HungerStation" not "HS"`}
+                className="w-full h-80 px-4 py-3 rounded-xl border border-gray-200 text-sm text-gray-800 placeholder-gray-300 resize-none focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand/50 leading-relaxed"
+                disabled={extracting}
+              />
+            </div>
+
+            {/* File upload (optional) */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5">
+              <p className="text-sm font-medium text-gray-700 mb-1">
+                Import from document{" "}
+                <span className="font-normal text-gray-400">(optional)</span>
+              </p>
+              <p className="text-xs text-gray-400 mb-4">
+                Upload a PDF, DOCX, or TXT file. The extracted text will
+                populate the field above so you can review and edit before saving.
+              </p>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                className="hidden"
+                onChange={handleFileChange}
+                disabled={extracting || saving}
+              />
+
+              {extracting ? (
+                <div className="flex items-center gap-3 py-3">
+                  <div className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin shrink-0" />
+                  <p className="text-sm text-gray-500">Extracting text from document…</p>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  <span>⬆</span>
+                  {pendingFile ? `${pendingFile.name} — upload another` : "Upload PDF, DOCX, or TXT"}
+                </button>
+              )}
+
+              {pendingFile && !extracting && (
+                <p className="text-xs text-green-700 mt-2">
+                  ✓ Text extracted from <span className="font-medium">{pendingFile.name}</span> — review above before saving.
+                </p>
+              )}
+            </div>
+
+            {/* Error */}
+            {error && (
+              <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl border border-red-100">
+                {error}
+              </p>
+            )}
+
+            {/* Actions */}
+            <div className="flex items-center gap-3">
               <button
-                onClick={() => setConfirmFile(null)}
-                className="flex-1 py-2.5 rounded-xl bg-[#F4F5F6] text-ink text-sm font-medium hover:bg-gray-200 transition-colors"
+                onClick={handleSave}
+                disabled={saving || extracting}
+                className="px-6 py-2.5 rounded-lg bg-[#FFEA00] text-gray-900 text-sm font-semibold hover:bg-yellow-300 transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {saving && (
+                  <span className="w-3.5 h-3.5 border-2 border-gray-700 border-t-transparent rounded-full animate-spin" />
+                )}
+                {saving ? "Saving…" : "Save guidelines"}
+              </button>
+              <button
+                onClick={cancelEdit}
+                disabled={saving}
+                className="px-4 py-2.5 rounded-lg text-sm text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
-              <button
-                onClick={() => void processUpload(confirmFile)}
-                className="flex-1 py-2.5 rounded-xl bg-brand text-ink text-sm font-semibold hover:bg-brand-dark transition-colors shadow-sm"
-              >
-                Replace
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </main>
     </div>
   );
 }

@@ -49,21 +49,19 @@ export default function DashboardNav() {
           <NavChatIcon />
           Chat
         </Link>
+        <Link
+          href="/dashboard/guidelines"
+          className="text-sm font-medium text-gray-600 hover:text-ink transition-colors"
+        >
+          Guidelines
+        </Link>
         {isAdmin && (
-          <>
-            <Link
-              href="/dashboard/review"
-              className="text-sm font-medium text-gray-600 hover:text-ink transition-colors"
-            >
-              Review queue
-            </Link>
-            <Link
-              href="/dashboard/guidelines"
-              className="text-sm font-medium text-gray-600 hover:text-ink transition-colors"
-            >
-              Guidelines
-            </Link>
-          </>
+          <Link
+            href="/dashboard/review"
+            className="text-sm font-medium text-gray-600 hover:text-ink transition-colors"
+          >
+            Review queue
+          </Link>
         )}
         <Link
           href="/dashboard/new"
