@@ -43,7 +43,7 @@ export default function GuidelinesPage() {
       }
       const [isAdmin, snap] = await Promise.all([
         isCopyTeamUser(user.uid),
-        getDoc(doc(db, "settings", "guidelines")),
+        getDoc(doc(db, "settings", "brandGuidelines")),
       ]);
       setIsCopyTeam(isAdmin);
       if (snap.exists()) setCurrent(snap.data() as Guidelines);
@@ -151,7 +151,7 @@ export default function GuidelinesPage() {
         data.fileName = fileName;
       }
 
-      await setDoc(doc(db, "settings", "guidelines"), data);
+      await setDoc(doc(db, "settings", "brandGuidelines"), data);
 
       setCurrent({
         content: editText.trim(),

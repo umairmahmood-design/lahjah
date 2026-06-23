@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
   let guidelinesSection = "";
   try {
     const { adminDb } = await import("@/lib/firebase-admin");
-    const snap = await adminDb.doc("settings/guidelines").get();
+    const snap = await adminDb.doc("settings/brandGuidelines").get();
     if (snap.exists) {
       const content = (snap.data()?.content as string | undefined)?.trim();
       if (content) {
