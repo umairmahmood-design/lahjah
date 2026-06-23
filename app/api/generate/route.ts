@@ -49,16 +49,26 @@ export async function POST(req: NextRequest) {
   // Fetch brand guidelines (best-effort — generation still works without them)
   let guidelinesSection = "";
   try {
+    console.log("[/api/generate] Fetching brand guidelines from settings/brandGuidelines…");
     const { adminDb } = await import("@/lib/firebase-admin");
     const snap = await adminDb.doc("settings/brandGuidelines").get();
+    console.log("[/api/generate] guidelines doc exists:", snap.exists);
     if (snap.exists) {
-      const content = (snap.data()?.content as string | undefined)?.trim();
+      const data = snap.data();
+      console.log("[/api/generate] guidelines doc fields:", Object.keys(data ?? {}));
+      const content = (data?.content as string | undefined)?.trim();
+      console.log("[/api/generate] guidelines content length:", content?.length ?? 0);
       if (content) {
         guidelinesSection = `\n\nBRAND GUIDELINES — AUTHORITATIVE (these are HungerStation's official brand standards, not suggestions):\n- Apply these exactly for every suggestion.\n- Any glossary or terminology entries are APPROVED, locked translations — use them exactly as given, never substitute alternatives.\n- If a requested term conflicts with the glossary, use the approved glossary term.\n\n${content}`;
+        console.log("[/api/generate] Guidelines included in prompt. Section length:", guidelinesSection.length);
+      } else {
+        console.warn("[/api/generate] guidelines doc exists but 'content' field is empty or missing.");
       }
+    } else {
+      console.warn("[/api/generate] No document found at settings/brandGuidelines.");
     }
-  } catch {
-    // Non-fatal — proceed without guidelines
+  } catch (err) {
+    console.error("[/api/generate] Failed to fetch brand guidelines (admin SDK error):", err);
   }
 
   const lockedTermsRule =

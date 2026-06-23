@@ -23,17 +23,29 @@ When brand guidelines are provided below:
 
 async function buildSystemPrompt(): Promise<string> {
   try {
+    console.log("[/api/chat] Fetching brand guidelines from settings/brandGuidelines…");
     const { adminDb } = await import("@/lib/firebase-admin");
     const snap = await adminDb.doc("settings/brandGuidelines").get();
+    console.log("[/api/chat] guidelines doc exists:", snap.exists);
     if (snap.exists) {
-      const content = (snap.data()?.content as string | undefined)?.trim();
+      const data = snap.data();
+      console.log("[/api/chat] guidelines doc fields:", Object.keys(data ?? {}));
+      const content = (data?.content as string | undefined)?.trim();
+      console.log("[/api/chat] guidelines content length:", content?.length ?? 0);
       if (content) {
-        return `${BASE_SYSTEM_PROMPT}\n\nBRAND GUIDELINES (follow these for all copy suggestions):\n${content}`;
+        const prompt = `${BASE_SYSTEM_PROMPT}\n\nBRAND GUIDELINES (follow these for all copy suggestions):\n${content}`;
+        console.log("[/api/chat] System prompt built WITH guidelines. Total length:", prompt.length);
+        return prompt;
+      } else {
+        console.warn("[/api/chat] guidelines doc exists but 'content' field is empty or missing.");
       }
+    } else {
+      console.warn("[/api/chat] No document found at settings/brandGuidelines.");
     }
-  } catch {
-    // Non-fatal — proceed without guidelines
+  } catch (err) {
+    console.error("[/api/chat] Failed to fetch brand guidelines (admin SDK error):", err);
   }
+  console.log("[/api/chat] System prompt built WITHOUT guidelines. Length:", BASE_SYSTEM_PROMPT.length);
   return BASE_SYSTEM_PROMPT;
 }
 
